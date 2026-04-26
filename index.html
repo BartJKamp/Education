@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Education — Bart Kamp</title>
+<meta name="description" content="Een groeiende verzameling interactieve tools voor het onderwijs.">
+<link rel="stylesheet" href="assets/css/shared.css">
+</head>
+<body>
+
+<canvas id="ambient-canvas"></canvas>
+
+<section class="hero">
+  <canvas id="hero-canvas"></canvas>
+  <div class="chrome logo entrance">
+    <div class="mark"></div>
+    <span class="name">EDUCATION</span>
+  </div>
+  <div class="chrome nav entrance">
+    <a href="#tools">tools</a>
+    <a href="about.html">about</a>
+    <a href="#contact">contact</a>
+  </div>
+  <div class="chrome copy entrance">
+    <div class="eyebrow">VOOR LEERLINGEN. VOOR DOCENTEN.</div>
+    <h1>Wiskunde, in beweging.</h1>
+    <p>Een groeiende verzameling interactieve tools voor het onderwijs.</p>
+  </div>
+  <div class="chrome label entrance">
+    <div class="hint">CLICK TO TRANSFORM</div>
+    <div class="name" id="att-name">HALVORSEN</div>
+  </div>
+  <div class="chrome scroll-hint entrance">SCROLL &darr;</div>
+</section>
+
+<section class="section" id="tools">
+  <div class="section-bg" style="background-image: url(assets/icons/klaslokaal.png);"></div>
+  <div class="card">
+    <div class="eyebrow">IN HET KLASLOKAAL</div>
+    <h2>Klassikale tools voor in de les.</h2>
+    <p>Wisbordjes en andere interactieve hulpmiddelen waarmee elke leerling tegelijk meedoet. Geen handen meer, geen wachten, alleen directe respons.</p>
+    <a href="klaslokaal.html" class="cta">START &rarr;</a>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-bg" style="background-image: url(assets/icons/wiskunde.png);"></div>
+  <div class="card">
+    <div class="eyebrow">WISKUNDE</div>
+    <h2>Wiskunde die je kunt zien draaien.</h2>
+    <p>3D speelbomen, geometrische verkenningen en interactieve modellen. Begrijpen begint met zien.</p>
+    <a href="wiskunde.html" class="cta">START &rarr;</a>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-bg" style="background-image: url(assets/icons/knight.png);"></div>
+  <div class="card">
+    <div class="eyebrow">SCHAKEN</div>
+    <h2>Train je bordbewustzijn.</h2>
+    <p>Blindfoldtraining, openingstheorie en ruimtelijke schaakvisualisaties. Gebouwd voor wie schaak wil leren denken &mdash; van beginner tot gevorderd.</p>
+    <a href="schaken.html" class="cta">START &rarr;</a>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-bg" style="background-image: url(assets/icons/lesmateriaal.png);"></div>
+  <div class="card">
+    <div class="eyebrow">LESMATERIAAL</div>
+    <h2>Animaties, presentaties en readers.</h2>
+    <p>Manim-animaties, lesdecks en zelfgeschreven readers &mdash; gemaakt voor het wiskundeonderwijs en vrij beschikbaar.</p>
+    <a href="lesmateriaal.html" class="cta">START &rarr;</a>
+  </div>
+</section>
+
+<footer id="contact">
+  <span>&copy; Bart Kamp</span>
+  <span><a href="https://github.com/BartJKamp/Education">github</a> &middot; <a href="mailto:bartjkamp@example.com">email</a></span>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="assets/js/shared.js"></script>
+<script>
+/* =====================================================================
+   HOMEPAGE: hero attractor with click-to-cycle, drifters, entrance animation
+   ===================================================================== */
+(function(){
+  const canvas = document.getElementById('hero-canvas');
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 200);
+  camera.position.z = 14;
+  const renderer = new THREE.WebGLRenderer({canvas, antialias: true, alpha: true});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+  function resize(){
+    const r = canvas.getBoundingClientRect();
+    renderer.setSize(r.width, r.height, false);
+    camera.aspect = r.width / r.height;
+    camera.updateProjectionMatrix();
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  const softTex = Wiskamp.softCircleTexture();
+  const ATT = Wiskamp.ATTRACTORS;
+  const ORDER = ['halvorsen','lorenz','aizawa','thomas','chen'];
+  let curIdx = 0;
+  let curAtt = ATT[ORDER[0]];
+
+  const N = 4000;
+  const trailGeo = new THREE.BufferGeometry();
+  const trailPos = new Float32Array(N * 3);
+  const trailCol = new Float32Array(N * 3);
+  for (let i = 0; i < N; i++) {
+    const t = i / N;
+    const c = Wiskamp.palette(t);
+    trailCol[i*3] = c[0]; trailCol[i*3+1] = c[1]; trailCol[i*3+2] = c[2];
+  }
+  trailGeo.setAttribute('position', new THREE.BufferAttribute(trailPos, 3));
+  trailGeo.setAttribute('color', new THREE.BufferAttribute(trailCol, 3));
+
+  const trailCore  = new THREE.Points(trailGeo, Wiskamp.createPointsMaterial(softTex, 0.10, 1.00));
+  const trailGlow1 = new THREE.Points(trailGeo, Wiskamp.createPointsMaterial(softTex, 0.26, 0.45));
+  const trailGlow2 = new THREE.Points(trailGeo, Wiskamp.createPointsMaterial(softTex, 0.55, 0.18));
+  const trailGlow3 = new THREE.Points(trailGeo, Wiskamp.createPointsMaterial(softTex, 1.10, 0.07));
+
+  const grp = new THREE.Group();
+  grp.add(trailGlow3); grp.add(trailGlow2); grp.add(trailGlow1); grp.add(trailCore);
+  grp.position.x = 3.0;
+
+  const D = 100;
+  const drifterGeo = new THREE.BufferGeometry();
+  const drifterPos = new Float32Array(D * 3);
+  const drifterVel = new Float32Array(D * 3);
+  const drifterCol = new Float32Array(D * 3);
+  for (let i = 0; i < D; i++) {
+    drifterPos[i*3]     = (Math.random() - 0.5) * 16;
+    drifterPos[i*3 + 1] = (Math.random() - 0.5) * 9;
+    drifterPos[i*3 + 2] = (Math.random() - 0.5) * 6;
+    drifterVel[i*3]     = (Math.random() - 0.5) * 0.018;
+    drifterVel[i*3 + 1] = (Math.random() - 0.5) * 0.012;
+    drifterVel[i*3 + 2] = (Math.random() - 0.5) * 0.012;
+    const cc = Wiskamp.palette(Math.random() * 0.6);
+    drifterCol[i*3] = cc[0]; drifterCol[i*3 + 1] = cc[1]; drifterCol[i*3 + 2] = cc[2];
+  }
+  drifterGeo.setAttribute('position', new THREE.BufferAttribute(drifterPos, 3));
+  drifterGeo.setAttribute('color', new THREE.BufferAttribute(drifterCol, 3));
+  scene.add(new THREE.Points(drifterGeo, Wiskamp.createPointsMaterial(softTex, 0.22, 0.30)));
+  scene.add(new THREE.Points(drifterGeo, Wiskamp.createPointsMaterial(softTex, 0.08, 0.85)));
+  scene.add(grp);
+
+  const targetTrail = Wiskamp.genTrail(curAtt, N);
+  const FAR = 1000;
+  for (let i = 0; i < N; i++) {
+    trailPos[i*3] = FAR; trailPos[i*3 + 1] = FAR; trailPos[i*3 + 2] = FAR;
+  }
+  trailGeo.attributes.position.needsUpdate = true;
+
+  let head = targetTrail.head;
+  let centroidX = targetTrail.centroid[0], centroidY = targetTrail.centroid[1], centroidZ = targetTrail.centroid[2];
+
+  let mode = 'entering';
+  let modeStart = performance.now();
+  const ENTRANCE_DUR = 2400;
+  const WAKE_DUR = 800;
+  let wakeStart = 0;
+  let shStart = 0;
+  const SHDUR = 3500;
+  let shTargets, shVel, shStartPos;
+
+  const mouse = { nx: 0, ny: 0, inside: false, overAttractor: false };
+  let hoverSlowFactor = 1.0;
+  const HOVER_RADIUS = 3.5;
+
+  canvas.addEventListener('mousemove', function(e){
+    const r = canvas.getBoundingClientRect();
+    mouse.nx = ((e.clientX - r.left) / r.width) * 2 - 1;
+    mouse.ny = -(((e.clientY - r.top) / r.height) * 2 - 1);
+    mouse.inside = true;
+    const halfH = Math.tan(50 * Math.PI / 360) * camera.position.z;
+    const halfW = halfH * (canvas.clientWidth / canvas.clientHeight);
+    const cwx = mouse.nx * halfW;
+    const cwy = mouse.ny * halfH;
+    const dx = cwx - grp.position.x;
+    const dy = cwy - grp.position.y;
+    mouse.overAttractor = (dx*dx + dy*dy) < (HOVER_RADIUS * HOVER_RADIUS);
+  });
+  canvas.addEventListener('mouseleave', function(){
+    mouse.inside = false;
+    mouse.overAttractor = false;
+  });
+
+  canvas.addEventListener('click', function(){
+    if (mode !== 'tracing') return;
+    const ni = (curIdx + 1) % ORDER.length;
+    const na = ATT[ORDER[ni]];
+    const nx = Wiskamp.genTrail(na, N);
+    shStartPos = new Float32Array(N * 3);
+    shVel = new Float32Array(N * 3);
+    for (let i = 0; i < N; i++) {
+      shStartPos[i*3]     = trailPos[i*3];
+      shStartPos[i*3 + 1] = trailPos[i*3 + 1];
+      shStartPos[i*3 + 2] = trailPos[i*3 + 2];
+      const v = 3 + Math.random() * 4;
+      const tt = Math.random() * Math.PI * 2;
+      const pp = Math.acos(2 * Math.random() - 1);
+      shVel[i*3]     = Math.sin(pp) * Math.cos(tt) * v;
+      shVel[i*3 + 1] = Math.sin(pp) * Math.sin(tt) * v;
+      shVel[i*3 + 2] = Math.cos(pp) * v;
+    }
+    shTargets = nx.pts;
+    curIdx = ni; curAtt = na; head = nx.head;
+    centroidX = nx.centroid[0]; centroidY = nx.centroid[1]; centroidZ = nx.centroid[2];
+    document.getElementById('att-name').textContent = na.name;
+    mode = 'shattering';
+    shStart = performance.now();
+    for (let i = 0; i < D; i++) {
+      const dx = drifterPos[i*3] - grp.position.x;
+      const dy = drifterPos[i*3 + 1] - grp.position.y;
+      const dz = drifterPos[i*3 + 2] - grp.position.z;
+      const dist = Math.sqrt(dx*dx + dy*dy + dz*dz) + 0.001;
+      const force = 0.06 + Math.random() * 0.08;
+      drifterVel[i*3]     += (dx/dist) * force + (Math.random() - 0.5) * 0.04;
+      drifterVel[i*3 + 1] += (dy/dist) * force + (Math.random() - 0.5) * 0.04;
+      drifterVel[i*3 + 2] += (dz/dist) * force + (Math.random() - 0.5) * 0.04;
+    }
+  });
+
+  function getDrifterBounds(){
+    const aspect = canvas.clientWidth / canvas.clientHeight;
+    const halfH = Math.tan(50 * Math.PI / 360) * 14;
+    const halfW = halfH * aspect;
+    return { halfW: halfW + 2, halfH: halfH + 2, halfD: 6 };
+  }
+
+  function animate(now){
+    requestAnimationFrame(animate);
+
+    if (mode === 'entering') {
+      const t = Math.min(1, (now - modeStart) / ENTRANCE_DUR);
+      const easedT = t * t * (3 - 2 * t);
+      const progressIdx = easedT * N;
+      for (let i = 0; i < N; i++) {
+        if (i < progressIdx) {
+          trailPos[i*3]     = targetTrail.pts[i*3];
+          trailPos[i*3 + 1] = targetTrail.pts[i*3 + 1];
+          trailPos[i*3 + 2] = targetTrail.pts[i*3 + 2];
+        } else {
+          trailPos[i*3]     = FAR;
+          trailPos[i*3 + 1] = FAR;
+          trailPos[i*3 + 2] = FAR;
+        }
+      }
+      trailGeo.attributes.position.needsUpdate = true;
+      if (t >= 1) {
+        for (let i = 0; i < N * 3; i++) trailPos[i] = targetTrail.pts[i];
+        trailGeo.attributes.position.needsUpdate = true;
+        mode = 'tracing';
+        wakeStart = now;
+      }
+    } else if (mode === 'tracing') {
+      for (let s = 0; s < 2; s++) {
+        for (let i = 0; i < N - 1; i++) {
+          trailPos[i*3]     = trailPos[(i+1)*3];
+          trailPos[i*3 + 1] = trailPos[(i+1)*3 + 1];
+          trailPos[i*3 + 2] = trailPos[(i+1)*3 + 2];
+        }
+        const d = curAtt.step(head[0], head[1], head[2]);
+        head[0] += d[0] * curAtt.dt;
+        head[1] += d[1] * curAtt.dt;
+        head[2] += d[2] * curAtt.dt;
+        const li = N - 1;
+        trailPos[li*3]     = head[0] * curAtt.scale - centroidX;
+        trailPos[li*3 + 1] = head[1] * curAtt.scale - centroidY;
+        trailPos[li*3 + 2] = head[2] * curAtt.scale - centroidZ;
+      }
+      trailGeo.attributes.position.needsUpdate = true;
+    } else if (mode === 'shattering') {
+      const t = Math.min(1, (now - shStart) / SHDUR);
+      const explodeT = Math.min(1, t / 0.15);
+      const reformRaw = Math.max(0, (t - 0.15) / 0.85);
+      const reformEase = 1 - Math.pow(1 - reformRaw, 4);
+      for (let i = 0; i < N; i++) {
+        const ex = shStartPos[i*3]     + shVel[i*3]     * explodeT;
+        const ey = shStartPos[i*3 + 1] + shVel[i*3 + 1] * explodeT;
+        const ez = shStartPos[i*3 + 2] + shVel[i*3 + 2] * explodeT;
+        trailPos[i*3]     = ex * (1 - reformEase) + shTargets[i*3]     * reformEase;
+        trailPos[i*3 + 1] = ey * (1 - reformEase) + shTargets[i*3 + 1] * reformEase;
+        trailPos[i*3 + 2] = ez * (1 - reformEase) + shTargets[i*3 + 2] * reformEase;
+      }
+      trailGeo.attributes.position.needsUpdate = true;
+      if (t >= 1) {
+        for (let i = 0; i < N * 3; i++) trailPos[i] = shTargets[i];
+        trailGeo.attributes.position.needsUpdate = true;
+        mode = 'tracing';
+      }
+    }
+
+    const bounds = getDrifterBounds();
+    for (let i = 0; i < D; i++) {
+      drifterPos[i*3]     += drifterVel[i*3];
+      drifterPos[i*3 + 1] += drifterVel[i*3 + 1];
+      drifterPos[i*3 + 2] += drifterVel[i*3 + 2];
+      if (drifterPos[i*3] >  bounds.halfW) drifterVel[i*3]     -= 0.005;
+      if (drifterPos[i*3] < -bounds.halfW) drifterVel[i*3]     += 0.005;
+      if (drifterPos[i*3 + 1] >  bounds.halfH) drifterVel[i*3 + 1] -= 0.005;
+      if (drifterPos[i*3 + 1] < -bounds.halfH) drifterVel[i*3 + 1] += 0.005;
+      if (drifterPos[i*3 + 2] >  bounds.halfD) drifterVel[i*3 + 2] -= 0.003;
+      if (drifterPos[i*3 + 2] < -bounds.halfD) drifterVel[i*3 + 2] += 0.003;
+      drifterVel[i*3]     += (Math.random() - 0.5) * 0.0005;
+      drifterVel[i*3 + 1] += (Math.random() - 0.5) * 0.0005;
+      drifterVel[i*3 + 2] += (Math.random() - 0.5) * 0.0005;
+      drifterVel[i*3]     *= 0.994;
+      drifterVel[i*3 + 1] *= 0.994;
+      drifterVel[i*3 + 2] *= 0.994;
+    }
+    drifterGeo.attributes.position.needsUpdate = true;
+
+    const slowTarget = mouse.overAttractor ? 0.22 : 1.0;
+    hoverSlowFactor += (slowTarget - hoverSlowFactor) * 0.06;
+
+    let wakeFactor = 1.0;
+    if (mode === 'entering') {
+      wakeFactor = 0.0;
+    } else if (mode === 'tracing' && wakeStart > 0) {
+      const wakeT = Math.min(1, (now - wakeStart) / WAKE_DUR);
+      wakeFactor = wakeT * wakeT * (3 - 2 * wakeT);
+    }
+    const rotMult = wakeFactor * hoverSlowFactor;
+    const bx = (mouse.inside && mode !== 'entering') ? mouse.ny * 0.0006 : 0;
+    const by = (mouse.inside && mode !== 'entering') ? mouse.nx * 0.0009 : 0;
+    grp.rotation.y += (curAtt.rotY + by) * rotMult;
+    grp.rotation.x += (curAtt.rotX + bx) * rotMult;
+    grp.rotation.z += curAtt.rotZ * rotMult;
+
+    renderer.render(scene, camera);
+  }
+  requestAnimationFrame(animate);
+
+  setTimeout(() => { document.body.classList.add('ready'); }, 200);
+})();
+
+/* =====================================================================
+   AMBIENT DRIFTERS (panels section)
+   ===================================================================== */
+(function(){
+  const canvas = document.getElementById('ambient-canvas');
+  const ctx = canvas.getContext('2d');
+
+  function resize(){
+    const dpr = Math.min(window.devicePixelRatio, 2);
+    canvas.width = window.innerWidth * dpr;
+    canvas.height = window.innerHeight * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  const NUM = 30;
+  const drifters = [];
+  for (let i = 0; i < NUM; i++) {
+    const c = Wiskamp.palette(Math.random() * 0.6);
+    drifters.push({
+      x: Math.random() * window.innerWidth,
+      y: Math.random() * window.innerHeight,
+      vx: (Math.random() - 0.5) * 1.2,
+      vy: (Math.random() - 0.5) * 0.8,
+      r: 1.2 + Math.random() * 1.8,
+      cr: Math.round(c[0] * 255),
+      cg: Math.round(c[1] * 255),
+      cb: Math.round(c[2] * 255),
+      alpha: 0.35 + Math.random() * 0.45
+    });
+  }
+
+  let scrollY = 0;
+  let ambientOpacity = 0;
+  window.addEventListener('scroll', () => { scrollY = window.scrollY; }, { passive: true });
+
+  function tick(){
+    requestAnimationFrame(tick);
+    const heroHeight = window.innerHeight;
+    const targetOpacity = scrollY > heroHeight * 0.3 ? 1.0 : 0.0;
+    ambientOpacity += (targetOpacity - ambientOpacity) * 0.04;
+    if (ambientOpacity < 0.01) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      return;
+    }
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < drifters.length; i++) {
+      const d = drifters[i];
+      d.x += d.vx;
+      d.y += d.vy;
+      d.vx += (Math.random() - 0.5) * 0.04;
+      d.vy += (Math.random() - 0.5) * 0.025;
+      d.vx *= 0.998;
+      d.vy *= 0.998;
+      const speed = Math.sqrt(d.vx * d.vx + d.vy * d.vy);
+      if (speed < 0.15) {
+        const ang = Math.random() * Math.PI * 2;
+        d.vx += Math.cos(ang) * 0.3;
+        d.vy += Math.sin(ang) * 0.2;
+      }
+      if (speed > 1.8) {
+        d.vx *= 1.8 / speed;
+        d.vy *= 1.8 / speed;
+      }
+      if (d.x < -10) d.x = window.innerWidth + 10;
+      if (d.x > window.innerWidth + 10) d.x = -10;
+      if (d.y < -10) d.y = window.innerHeight + 10;
+      if (d.y > window.innerHeight + 10) d.y = -10;
+      const a = d.alpha * ambientOpacity;
+      const grad = ctx.createRadialGradient(d.x, d.y, 0, d.x, d.y, d.r * 6);
+      grad.addColorStop(0, `rgba(${d.cr},${d.cg},${d.cb},${a})`);
+      grad.addColorStop(0.4, `rgba(${d.cr},${d.cg},${d.cb},${a * 0.3})`);
+      grad.addColorStop(1, `rgba(${d.cr},${d.cg},${d.cb},0)`);
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(d.x, d.y, d.r * 6, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalCompositeOperation = 'source-over';
+  }
+  tick();
+})();
+
+/* =====================================================================
+   CARD ENTRANCE + ICON PARALLAX
+   ===================================================================== */
+(function(){
+  const sections = document.querySelectorAll('.section');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('in-view');
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.15 });
+  sections.forEach(s => observer.observe(s));
+
+  const PARALLAX_STRENGTH = 0.5;
+  function updateParallax(){
+    const vh = window.innerHeight;
+    const center = vh / 2;
+    sections.forEach(section => {
+      const rect = section.getBoundingClientRect();
+      const sectionCenter = rect.top + rect.height / 2;
+      const offset = sectionCenter - center;
+      const parallaxY = offset * PARALLAX_STRENGTH;
+      const bg = section.querySelector('.section-bg');
+      if (bg) {
+        bg.style.setProperty('--parallax-y', `${parallaxY}px`);
+      }
+    });
+  }
+  let ticking = false;
+  function onScroll(){
+    if (!ticking) {
+      requestAnimationFrame(() => {
+        updateParallax();
+        ticking = false;
+      });
+      ticking = true;
+    }
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
+  window.addEventListener('resize', updateParallax);
+  updateParallax();
+})();
+</script>
+</body>
+</html>
