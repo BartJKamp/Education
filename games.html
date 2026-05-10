@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Games — Education</title>
+<meta name="description" content="Schaken, speltheorie en andere bordspellen, in 3D verkend.">
+<link rel="stylesheet" href="assets/css/shared.css">
+<style>
+  /* ========================================================================
+     GAMES — pagina-specifieke stijlen
+     De hero toont een 3D-graaf van paardensprongen op een schaakbord:
+     elk vakje is een knoop, elke verbinding een legale paardensprong.
+     Het bord ligt onderin in 3D-perspectief; de graaf zweeft erboven.
+     ======================================================================== */
+
+  /* Sommige browsers maken niet-bezochte links paars/magenta. Forceer
+     overerving zodat onze eigen kleuren werken. */
+  a, a:link, a:visited, a:hover, a:active { color: inherit; }
+
+  .hero {
+    background: #000;
+    overflow: hidden;
+    z-index: 1;
+  }
+  .topbar { z-index: 10; }
+
+  /* Schaakbord onderaan, in perspectief getekend door de THREE-scene */
+  .board-floor {
+    position: absolute;
+    bottom: 0;
+    left: 58%;
+    height: 55vh;
+    width: auto;
+    max-width: 100%;
+    transform: translateX(-50%);
+    z-index: 1;
+    pointer-events: none;
+    object-fit: contain;
+  }
+
+  /* Container voor de 3D-graaf — sized om net boven de stukken te zweven */
+  .graph-stage {
+    position: absolute;
+    top: 4vh;
+    left: 16%;
+    width: 84%;
+    height: 70vh;
+    z-index: 2;
+    pointer-events: none;
+  }
+  .graph-stage canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  .hero-text {
+    position: absolute;
+    top: 50%;
+    left: 80px;
+    transform: translateY(-50%);
+    max-width: 460px;
+    z-index: 3;
+  }
+  .hero-text .eyebrow {
+    font-size: 12px; letter-spacing: 0.32em;
+    opacity: 0.55; margin-bottom: 28px;
+  }
+  .hero-text h1 {
+    font-size: 60px; line-height: 1.04; font-weight: 500;
+    letter-spacing: -0.02em; margin-bottom: 28px;
+  }
+  .hero-text p {
+    font-size: 18px; opacity: 0.7; line-height: 1.65; margin-bottom: 36px;
+  }
+
+  .back-link {
+    position: fixed;
+    bottom: 36px; left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    font-size: 11px; letter-spacing: 0.3em;
+    opacity: 0.4; text-decoration: none; color: inherit;
+    transition: opacity 0.2s;
+  }
+  .back-link:hover { opacity: 0.9; }
+
+  @media (max-width: 1100px) {
+    .hero-text { left: 32px; right: 32px; max-width: none; }
+    .hero-text h1 { font-size: 40px; }
+    .board-floor { height: 40vh; }
+    .graph-stage { left: 0; width: 100%; height: 50vh; }
+  }
+</style>
+</head>
+<body>
+
+<canvas id="ambient-canvas"></canvas>
+
+<nav class="topbar">
+  <a href="index.html" class="logo-link">
+    <div class="mark"></div>
+    <span class="name">EDUCATION</span>
+  </a>
+  <div class="nav">
+    <a href="index.html#tools">tools</a>
+    <a href="about.html">about</a>
+  </div>
+</nav>
+
+<section class="hero">
+  <img class="board-floor" src="assets/board.jpg" alt="">
+  <div class="graph-stage">
+    <canvas id="graph-canvas"></canvas>
+  </div>
+  <div class="hero-text entrance">
+    <div class="eyebrow">GAMES</div>
+    <h1>De graaf van het paard.</h1>
+    <p>Boven het bord zweeft de graaf van alle paardensprongen &mdash; elk vakje een knoop, elke verbinding een legale sprong. De wiskunde achter het spel.</p>
+  </div>
+</section>
+
+<section class="tools-grid">
+  <h2>Tools in deze categorie</h2>
+  <div class="grid">
+    <div class="tool-card coming">
+      <h3>Opening tree</h3>
+      <p>Verken openingstheorie als interactieve boom met transposities en commentaar.</p>
+      <span class="arrow">BINNENKORT &rarr;</span>
+    </div>
+    <div class="tool-card coming">
+      <h3>Blindfold trainer</h3>
+      <p>Train je bordbewustzijn zonder bord — vakherkenning, paardenpaden, stukvisie.</p>
+      <span class="arrow">BINNENKORT &rarr;</span>
+    </div>
+    <div class="tool-card coming">
+      <h3>3D speelboom</h3>
+      <p>Game trees in drie dimensies — voor wie de structuur achter de zetten wil zien.</p>
+      <span class="arrow">BINNENKORT &rarr;</span>
+    </div>
+    <div class="tool-card coming">
+      <h3>Go basis</h3>
+      <p>Begrijp territorium, levensvormen en de basisstrategie van Go.</p>
+      <span class="arrow">BINNENKORT &rarr;</span>
+    </div>
+    <div class="tool-card coming">
+      <h3>Speltheorie</h3>
+      <p>Nash-evenwicht, gemengde strategieën en het minimax-stelling visueel.</p>
+      <span class="arrow">BINNENKORT &rarr;</span>
+    </div>
+  </div>
+</section>
+
+<a href="index.html" class="back-link">&larr; TERUG NAAR HOME</a>
+
+<footer>
+  <span>&copy; Bart Kamp</span>
+  <span><a href="https://github.com/BartJKamp/Education">github</a></span>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="assets/js/shared.js"></script>
+<script>
+/* =====================================================================
+   GAMES — paardensprong-graaf in 3D
+   Op een 8x8 schaakbord modelleren we elk vakje als knoop. Tussen twee
+   knopen is een rib precies dan als een paard in één sprong tussen die
+   vakjes kan. Het paard staat op e4. Knopen worden ingekleurd op
+   basis van hun BFS-afstand vanaf het paard: hoe sneller bereikbaar,
+   hoe warmer de kleur. De graaf wordt boven het bord-vlak getekend
+   en kantelt langzaam op basis van cursor-positie.
+   ===================================================================== */
+
+const BUCKET_PT = [0.95, 0.82, 0.55, 0.30, 0.10];
+function bucketColorHex(b){
+  const c = Wiskamp.palette(BUCKET_PT[b]);
+  return (Math.round(c[0]*255) << 16) | (Math.round(c[1]*255) << 8) | Math.round(c[2]*255);
+}
+
+/* =====================================================================
+   KNIGHT GRAPH LOGIC (no interaction — knight stays at e4)
+   ===================================================================== */
+const FILES = ['a','b','c','d','e','f','g','h'];
+const RANKS = ['1','2','3','4','5','6','7','8'];
+const si = (f, r) => f * 8 + r;
+const sf = i => Math.floor(i / 8);
+const sr = i => i % 8;
+const KNIGHT_DELTAS = [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]];
+
+function knightMoves(idx){
+  const f = sf(idx), r = sr(idx);
+  return KNIGHT_DELTAS.map(([df, dr]) => {
+    const nf = f + df, nr = r + dr;
+    return (nf >= 0 && nf < 8 && nr >= 0 && nr < 8) ? si(nf, nr) : -1;
+  }).filter(x => x >= 0);
+}
+function squareDegree(idx){ return knightMoves(idx).length; }
+function buildEdges(){
+  const e = [];
+  for (let f = 0; f < 8; f++) for (let r = 0; r < 8; r++) {
+    for (const [df, dr] of KNIGHT_DELTAS) {
+      const nf = f + df, nr = r + dr;
+      if (nf >= 0 && nf < 8 && nr >= 0 && nr < 8) {
+        const a = si(f, r), b = si(nf, nr);
+        if (a < b) e.push([a, b]);
+      }
+    }
+  }
+  return e;
+}
+const EDGES = buildEdges();
+
+function bfs(src){
+  const d = new Array(64).fill(Infinity);
+  d[src] = 0;
+  const q = [src];
+  while (q.length) {
+    const c = q.shift();
+    for (const n of knightMoves(c)) if (d[n] === Infinity) { d[n] = d[c] + 1; q.push(n); }
+  }
+  return d;
+}
+
+// Knight permanently at e4
+const KNIGHT_IDX = si(4, 3);  // e4
+const DIST = bfs(KNIGHT_IDX);
+
+/* =====================================================================
+   FORCE-DIRECTED 3D LAYOUT (run once at init, frozen)
+   ===================================================================== */
+function computeGraphLayout(){
+  const pos = new Array(64);
+  for (let i = 0; i < 64; i++) {
+    const r = (8 - squareDegree(i)) * 0.75 + 0.5;
+    const theta = Math.random() * Math.PI * 2;
+    const phi = Math.acos(2 * Math.random() - 1);
+    pos[i] = new THREE.Vector3(
+      r * Math.sin(phi) * Math.cos(theta),
+      r * Math.sin(phi) * Math.sin(theta),
+      r * Math.cos(phi)
+    );
+  }
+  const vel = Array.from({length: 64}, () => new THREE.Vector3());
+  for (let it = 0; it < 320; it++) {
+    const F = Array.from({length: 64}, () => new THREE.Vector3());
+    for (let i = 0; i < 64; i++) {
+      for (let j = i + 1; j < 64; j++) {
+        const d = pos[i].clone().sub(pos[j]);
+        const l = Math.max(d.length(), 0.1);
+        const f = 8 / (l * l);
+        d.normalize().multiplyScalar(f);
+        F[i].add(d);
+        F[j].sub(d);
+      }
+    }
+    for (const [a, b] of EDGES) {
+      const d = pos[b].clone().sub(pos[a]);
+      const l = d.length();
+      const f = 0.04 * (l - 1.2);
+      d.normalize().multiplyScalar(f);
+      F[a].add(d);
+      F[b].sub(d);
+    }
+    for (let i = 0; i < 64; i++) {
+      F[i].addScaledVector(pos[i], -(squareDegree(i) - 2) * 0.006);
+    }
+    for (let i = 0; i < 64; i++) {
+      vel[i].add(F[i]).multiplyScalar(0.85);
+      pos[i].add(vel[i]);
+    }
+  }
+  let mx = 0;
+  for (const p of pos) mx = Math.max(mx, p.length());
+  const sc = 5.5 / mx;
+  for (const p of pos) p.multiplyScalar(sc);
+  return pos;
+}
+const NODE_POS = computeGraphLayout();
+
+/* =====================================================================
+   THREE.JS SETUP — non-interactive auto-rotating display
+   ===================================================================== */
+const graphCanvas = document.getElementById('graph-canvas');
+const renderer = new THREE.WebGLRenderer({ canvas: graphCanvas, antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+const scene = new THREE.Scene();
+// Subtle fog: gives depth
+scene.fog = new THREE.Fog(0x000000, 14, 26);
+
+const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 100);
+const RADIUS = 16;
+
+function resizeGraph(){
+  const rect = graphCanvas.getBoundingClientRect();
+  renderer.setSize(rect.width, rect.height, false);
+  camera.aspect = rect.width / rect.height;
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', resizeGraph);
+resizeGraph();
+
+// Soft particle texture
+function softCircleTexture(){
+  const size = 128;
+  const c = document.createElement('canvas');
+  c.width = c.height = size;
+  const ctx = c.getContext('2d');
+  const cx = size / 2, cy = size / 2;
+  const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, size / 2);
+  grad.addColorStop(0.00, 'rgba(255,255,255,1.0)');
+  grad.addColorStop(0.20, 'rgba(255,255,255,0.85)');
+  grad.addColorStop(0.50, 'rgba(255,255,255,0.30)');
+  grad.addColorStop(0.80, 'rgba(255,255,255,0.05)');
+  grad.addColorStop(1.00, 'rgba(255,255,255,0.0)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, size, size);
+  const tex = new THREE.CanvasTexture(c);
+  tex.minFilter = THREE.LinearFilter;
+  tex.magFilter = THREE.LinearFilter;
+  return tex;
+}
+const SOFT_TEX = softCircleTexture();
+
+/*
+  Build edges, colored by BFS bucket.
+  Both endpoints share a bucket = colored edge for that bucket.
+*/
+const bucketEdges = [[], [], [], [], []];
+for (const [a, b] of EDGES) {
+  const bucket = Math.min(Math.min(DIST[a], DIST[b]), 4);
+  bucketEdges[bucket].push([a, b]);
+}
+const edgeOpacities = [1.0, 0.85, 0.62, 0.42, 0.22];
+bucketEdges.forEach((arr, bi) => {
+  if (!arr.length) return;
+  const pts = [];
+  for (const [a, b] of arr) {
+    pts.push(NODE_POS[a].x, NODE_POS[a].y, NODE_POS[a].z);
+    pts.push(NODE_POS[b].x, NODE_POS[b].y, NODE_POS[b].z);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+  const mat = new THREE.LineBasicMaterial({
+    color: bucketColorHex(bi),
+    transparent: true, opacity: edgeOpacities[bi], depthWrite: false
+  });
+  scene.add(new THREE.LineSegments(geo, mat));
+});
+
+/*
+  Build nodes — sphere + two glow sprite layers, each scaled by bucket.
+*/
+const NODE_SCALE = [2.4, 1.7, 1.3, 1.0, 0.85];
+const nodeCores = [];
+const nodeGlows1 = [];
+const nodeGlows2 = [];
+for (let i = 0; i < 64; i++) {
+  const b = Math.min(DIST[i], 4);
+  const color = bucketColorHex(b);
+  const s = NODE_SCALE[b];
+
+  // Core sphere
+  const core = new THREE.Mesh(
+    new THREE.SphereGeometry(0.10, 12, 8),
+    new THREE.MeshBasicMaterial({ color })
+  );
+  core.position.copy(NODE_POS[i]);
+  core.scale.setScalar(s);
+  scene.add(core);
+  nodeCores.push(core);
+
+  // Glow layer 1
+  const g1Mat = new THREE.SpriteMaterial({
+    map: SOFT_TEX, color,
+    transparent: true,
+    opacity: b === 0 ? 0.7 : b === 1 ? 0.55 : b === 2 ? 0.40 : b === 3 ? 0.28 : 0.18,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false
+  });
+  const g1 = new THREE.Sprite(g1Mat);
+  g1.scale.set(0.5 * s, 0.5 * s, 1);
+  g1.position.copy(NODE_POS[i]);
+  scene.add(g1);
+  nodeGlows1.push(g1);
+
+  // Glow layer 2
+  const g2Mat = new THREE.SpriteMaterial({
+    map: SOFT_TEX, color,
+    transparent: true,
+    opacity: b === 0 ? 0.30 : b === 1 ? 0.22 : b === 2 ? 0.16 : b === 3 ? 0.12 : 0.08,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false
+  });
+  const g2 = new THREE.Sprite(g2Mat);
+  g2.scale.set(1.0 * s, 1.0 * s, 1);
+  g2.position.copy(NODE_POS[i]);
+  scene.add(g2);
+  nodeGlows2.push(g2);
+}
+
+/*
+  AUTO-ROTATION
+  Slow eastward drift around the vertical axis. Tiny phi oscillation so the
+  view subtly bobs up and down — adds life without being distracting.
+*/
+let theta = 0.5;
+const phi0 = 1.05;  // slightly above equator (looking slightly down at the graph)
+const PHI_AMP = 0.06;
+const PHI_FREQ = 0.00018;
+const THETA_VEL = 0.0028;
+
+function applyOrbit(now){
+  theta += THETA_VEL;
+  const phi = phi0 + PHI_AMP * Math.sin(now * PHI_FREQ);
+  camera.position.set(
+    RADIUS * Math.sin(phi) * Math.sin(theta),
+    RADIUS * Math.cos(phi),
+    RADIUS * Math.sin(phi) * Math.cos(theta)
+  );
+  camera.lookAt(0, 0, 0);
+}
+
+/*
+  ANIMATION LOOP
+  - Apply orbit camera
+  - Subtle breathing on node scales (per-node phase offset)
+*/
+let frameCount = 0;
+function animate(now){
+  requestAnimationFrame(animate);
+  frameCount++;
+  applyOrbit(now);
+
+  // Breathing every other frame for performance
+  if (frameCount % 2 === 0) {
+    const t = now * 0.001;
+    for (let i = 0; i < 64; i++) {
+      const b = Math.min(DIST[i], 4);
+      const baseScale = NODE_SCALE[b];
+      const phase = i * 0.3;
+      const breath = 1 + 0.05 * Math.sin(t + phase);
+      const s = baseScale * breath;
+      nodeCores[i].scale.setScalar(s);
+      nodeGlows1[i].scale.set(0.5 * s, 0.5 * s, 1);
+      nodeGlows2[i].scale.set(1.0 * s, 1.0 * s, 1);
+    }
+  }
+
+  renderer.render(scene, camera);
+}
+requestAnimationFrame(animate);
+
+// Ambient drift uit shared.js
+Wiskamp.initAmbientDrift({ num: 28, paletteRange: [0, 0.6] });
+
+// Entrance-class triggeren
+requestAnimationFrame(() => document.body.classList.add('ready'));
+</script>
+</body>
+</html>

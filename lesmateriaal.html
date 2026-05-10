@@ -4,52 +4,149 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Lesmateriaal — Education</title>
-<meta name="description" content="Manim-animaties, lesdecks en zelfgeschreven readers — gemaakt voor het wiskundeonderwijs en vrij beschikbaar.">
+<meta name="description" content="Animaties, presentaties en readers.">
 <link rel="stylesheet" href="assets/css/shared.css">
+<style>
+  /* ========================================================================
+     LESMATERIAAL — pagina-specifieke stijlen
+     De hero heeft links de teksttitel, rechts een SVG die in een lus
+     vijf wiskundige constructies tekent in Manim-stijl. Elke constructie
+     bouwt zichzelf op met geanimeerde lijnen en cirkels en fadet daarna
+     uit voordat de volgende begint.
+     ======================================================================== */
+
+  .hero {
+    background: radial-gradient(ellipse at 60% 50%, #060914 0%, #000 70%);
+    display: flex;
+    align-items: center;
+    padding: 0 60px 0 80px;
+    z-index: 3;
+    gap: 40px;
+  }
+
+  .topbar { z-index: 10; }
+
+  .hero .copy {
+    flex: 0 0 36%;
+    max-width: 460px;
+    position: relative;
+    z-index: 3;
+    transform: none;
+    top: auto;
+    left: auto;
+  }
+  .hero .copy h1 { font-size: 60px; }
+
+  .construction {
+    flex: 1;
+    height: 90vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+  .construction svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  /* Tekst-label dat per constructie de naam ervan toont */
+  .construction-label {
+    position: absolute;
+    bottom: 36px;
+    right: 0;
+    font-size: 11px;
+    letter-spacing: 0.32em;
+    opacity: 0;
+    transition: opacity 0.8s ease;
+    color: #f4d57a;
+    text-align: right;
+  }
+  .construction-label.visible { opacity: 0.85; }
+  .construction-label .small {
+    font-size: 9px; letter-spacing: 0.25em;
+    opacity: 0.55; margin-top: 4px; color: #fff;
+  }
+
+  .back-link {
+    position: fixed;
+    bottom: 36px; left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    font-size: 11px; letter-spacing: 0.3em;
+    opacity: 0.4; text-decoration: none; color: inherit;
+    transition: opacity 0.2s;
+  }
+  .back-link:hover { opacity: 0.9; }
+
+  @media (max-width: 1100px) {
+    .hero {
+      padding: 0 32px;
+      flex-direction: column;
+      height: auto;
+      min-height: 100vh;
+      padding-top: 120px;
+      padding-bottom: 60px;
+    }
+    .hero .copy { flex: 1; max-width: 100%; }
+    .hero .copy h1 { font-size: 44px; }
+    .construction { width: 100%; height: 60vh; }
+  }
+</style>
 </head>
 <body>
 
 <canvas id="ambient-canvas"></canvas>
 
-<section class="simple-hero">
-  <nav class="topbar">
-    <a href="index.html" class="logo-link">
-      <div class="mark"></div>
-      <span class="name">EDUCATION</span>
-    </a>
-    <div class="nav">
-      <a href="index.html#tools">tools</a>
-      <a href="about.html">about</a>
-    </div>
-  </nav>
-  <div class="copy">
+<nav class="topbar">
+  <a href="index.html" class="logo-link">
+    <div class="mark"></div>
+    <span class="name">EDUCATION</span>
+  </a>
+  <div class="nav">
+    <a href="index.html#tools">tools</a>
+    <a href="about.html">about</a>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="copy entrance">
     <div class="eyebrow">LESMATERIAAL</div>
     <h1>Animaties, presentaties en readers.</h1>
-    <p>Manim-animaties, lesdecks en zelfgeschreven readers — gemaakt voor het wiskundeonderwijs en vrij beschikbaar.</p>
-    <a href="index.html" class="back">&larr; TERUG NAAR HOME</a>
+    <p>Manim-animaties, lesdecks en zelfgeschreven readers &mdash; gemaakt voor het wiskundeonderwijs en vrij beschikbaar.</p>
+  </div>
+  <div class="construction">
+    <svg id="construction-svg" viewBox="-500 -400 1000 800" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet"></svg>
+    <div class="construction-label" id="construction-label">
+      <div class="title" id="label-title">CYCLOID</div>
+      <div class="small" id="label-sub">een rollende cirkel</div>
+    </div>
   </div>
 </section>
 
 <section class="tools-grid">
-  <h2>Tools in deze categorie</h2>
+  <h2>Materiaal in deze categorie</h2>
   <div class="grid">
     <div class="tool-card coming">
-      <h3>Manim animaties</h3>
-      <p>Korte animaties bij lesonderwerpen, vrij te gebruiken in de klas.</p>
+      <h3>Negatieve getallen — reader</h3>
+      <p>Werkboek voor de onderbouw met pijlen op de getallenlijn, opdrachten en uitwerkingen.</p>
+      <span class="arrow">BINNENKORT &rarr;</span>
+    </div>
+    <div class="tool-card coming">
+      <h3>Manim-animaties</h3>
+      <p>Korte animaties bij lessen — embed-baar in PowerPoint of als losse video.</p>
       <span class="arrow">BINNENKORT &rarr;</span>
     </div>
     <div class="tool-card coming">
       <h3>Lesdecks</h3>
-      <p>PowerPoint-presentaties met ingebedde animaties.</p>
-      <span class="arrow">BINNENKORT &rarr;</span>
-    </div>
-    <div class="tool-card coming">
-      <h3>Readers</h3>
-      <p>Zelfgeschreven uitlegmateriaal bij specifieke onderwerpen.</p>
+      <p>PowerPoints met ingebouwde animaties voor klassikale uitleg.</p>
       <span class="arrow">BINNENKORT &rarr;</span>
     </div>
   </div>
 </section>
+
+<a href="index.html" class="back-link">&larr; TERUG NAAR HOME</a>
 
 <footer>
   <span>&copy; Bart Kamp</span>
@@ -58,73 +155,669 @@
 
 <script src="assets/js/shared.js"></script>
 <script>
-(function(){
-  const canvas = document.getElementById('ambient-canvas');
-  const ctx = canvas.getContext('2d');
-  function resize(){
-    const dpr = Math.min(window.devicePixelRatio, 2);
-    canvas.width = window.innerWidth * dpr;
-    canvas.height = window.innerHeight * dpr;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+/* =====================================================================
+   LESMATERIAAL — Manim-stijl construction loop
+   Vijf wiskundige constructies (cycloide, Reuleaux-driehoek, hexagon,
+   nephroid en Freeth's nephroid) tekenen zichzelf in een eindeloze
+   lus. Elke constructie animeert zijn eigen opbouw met SVG-lijnen en
+   -cirkels, toont kort een label, en fadet uit voordat de volgende
+   begint.
+   ===================================================================== */
+
+// paletteCSS gebruikt het palette uit shared.js
+function paletteCSS(t, alpha=1){
+  const c = Wiskamp.palette(t);
+  return `rgba(${Math.round(c[0]*255)},${Math.round(c[1]*255)},${Math.round(c[2]*255)},${alpha})`;
+}
+
+const COLORS = {
+  trace: paletteCSS(0.9),
+  guide: paletteCSS(0.55),
+  guideMuted: paletteCSS(0.5, 0.45),
+  point: paletteCSS(0.95),
+  arm1: paletteCSS(0.3),    // teal — slowest arm
+  arm2: paletteCSS(0.55),   // mid — middle arm
+  arm3: paletteCSS(0.85),   // gold — fastest arm
+};
+
+/* =====================================================================
+   SVG HELPERS
+   ===================================================================== */
+
+const svg = document.getElementById('construction-svg');
+const SVG_NS = 'http://www.w3.org/2000/svg';
+let stage = document.createElementNS(SVG_NS, 'g');
+svg.appendChild(stage);
+
+function clearStage() {
+  while (stage.firstChild) stage.removeChild(stage.firstChild);
+}
+function el(tag, attrs={}) {
+  const e = document.createElementNS(SVG_NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  stage.appendChild(e);
+  return e;
+}
+function setAttrs(node, attrs){
+  for (const k in attrs) node.setAttribute(k, attrs[k]);
+}
+function smoothstep(t){ return t*t*(3 - 2*t); }
+function animate(duration, onFrame, easing = smoothstep) {
+  return new Promise(resolve => {
+    const start = performance.now();
+    function step(now){
+      const t = Math.min(1, (now - start) / duration);
+      onFrame(easing(t));
+      if (t < 1) requestAnimationFrame(step);
+      else resolve();
+    }
+    requestAnimationFrame(step);
+  });
+}
+function delay(ms){ return new Promise(r => setTimeout(r, ms)); }
+
+const labelEl = document.getElementById('construction-label');
+const labelTitle = document.getElementById('label-title');
+const labelSub = document.getElementById('label-sub');
+function setLabel(title, sub){
+  labelTitle.textContent = title;
+  labelSub.textContent = sub;
+}
+function showLabel(){ labelEl.classList.add('visible'); }
+function hideLabel(){ labelEl.classList.remove('visible'); }
+
+/* =====================================================================
+   CONSTRUCTIONS
+   viewBox is now 1000x800 with origin at center, so coordinates range
+   roughly -500..500 horizontally and -400..400 vertically.
+   ===================================================================== */
+
+/*
+  1. CYCLOID
+  Larger now: circle radius 80, rolling line spans ~860 pixels (-430 to +430),
+  ~3 full revolutions visible across the canvas.
+*/
+async function constructionCycloid() {
+  setLabel('CYCLOID', 'een punt op een rollende cirkel');
+  showLabel();
+
+  /*
+    LAYOUT REASONING
+    The traced cycloid has horizontal length per arch = 2πR.
+    Two arches have total trace-length 4πR.
+    The rolling circle's center traces the same horizontal distance,
+    starting at x = startX_circle + R and ending at startX_circle + R + 4πR.
+    The circle's right edge at the end is at startX_circle + R + 4πR + R.
+
+    To leave visible margin on both sides:
+      - Reserve the leftmost ~10% of the baseline as "before the circle starts"
+      - Reserve the rightmost ~10% as "after the second arch completes"
+      - The circle's full path (including its physical width) occupies the middle 80%
+
+    With baseline from -440 to +440 (width 880), 80% middle = 704 pixels.
+    That space must hold the circle's leftmost-edge-at-start to rightmost-edge-at-end,
+    which is 4πR + 2R = 2R(2π + 1).
+    So R = 704 / (2 * (2π + 1)) = 704 / 14.566 ≈ 48.3
+  */
+  const baselineLeft = -440;
+  const baselineRight = 440;
+  const baselineWidth = baselineRight - baselineLeft;
+  const usableWidth = baselineWidth * 0.82;
+  const R2 = usableWidth / (2 * (2 * Math.PI + 1));
+  // Where the circle starts (its center on first frame)
+  const circleStartX = baselineLeft + (baselineWidth - usableWidth) / 2 + R2;
+  const baseY = 160;
+  const totalAngle = Math.PI * 4;  // 2 full rolls
+
+  const baseline = el('line', {
+    x1: baselineLeft, y1: baseY, x2: baselineLeft, y2: baseY,
+    stroke: COLORS.guide, 'stroke-width': 1.4, 'stroke-linecap': 'round',
+    opacity: 0.7
+  });
+  await animate(800, t => setAttrs(baseline, { x2: baselineLeft + baselineWidth * t }));
+
+  const circle = el('circle', {
+    cx: circleStartX, cy: baseY - R2, r: R2,
+    fill: 'none', stroke: COLORS.guide, 'stroke-width': 1.6, opacity: 0.9
+  });
+  const centerDot = el('circle', { cx: circleStartX, cy: baseY - R2, r: 3, fill: COLORS.guideMuted });
+  const tracePoint = el('circle', { cx: circleStartX, cy: baseY, r: 5, fill: COLORS.point });
+  const spoke = el('line', {
+    x1: circleStartX, y1: baseY - R2, x2: circleStartX, y2: baseY,
+    stroke: COLORS.guideMuted, 'stroke-width': 1.2
+  });
+
+  const traceCurve = el('polyline', {
+    points: '', fill: 'none', stroke: COLORS.trace, 'stroke-width': 2.6,
+    'stroke-linecap': 'round', 'stroke-linejoin': 'round'
+  });
+  const traceGlow = el('polyline', {
+    points: '', fill: 'none', stroke: COLORS.trace, 'stroke-width': 8,
+    'stroke-linecap': 'round', 'stroke-linejoin': 'round', opacity: 0.25
+  });
+  stage.insertBefore(traceGlow, circle);
+  stage.insertBefore(traceCurve, circle);
+
+  const tracePoints = [];
+  await animate(8000, t => {
+    const theta = t * totalAngle;
+    const cx = circleStartX + R2 * theta;
+    const cy = baseY - R2;
+    setAttrs(circle, { cx, cy });
+    setAttrs(centerDot, { cx, cy });
+    const px = cx - R2 * Math.sin(theta);
+    const py = cy + R2 * Math.cos(theta);
+    setAttrs(tracePoint, { cx: px, cy: py });
+    setAttrs(spoke, { x1: cx, y1: cy, x2: px, y2: py });
+    tracePoints.push(`${px.toFixed(1)},${py.toFixed(1)}`);
+    const ptStr = tracePoints.join(' ');
+    setAttrs(traceCurve, { points: ptStr });
+    setAttrs(traceGlow, { points: ptStr });
+  }, t => t);
+
+  await delay(2200);
+  hideLabel();
+  await animate(1000, t => stage.style.opacity = (1 - t).toString());
+}
+
+/*
+  2. REULEAUX TRIANGLE
+  Bug fix: the arcs were inverted. The Reuleaux is the INTERSECTION of three circles —
+  each arc should bulge OUTWARD (away from the opposite vertex). The fix is the sweep
+  flag: 0 instead of 1 in our coordinate system (SVG y is flipped from math y).
+
+  The arc from B to C, centered at A, must take the long way around — bulging toward
+  the side OPPOSITE A (i.e., outward from the centroid). With our vertex layout
+  (A at top in math, but at -y in SVG since SVG-y flips), and going B→C clockwise
+  in math (which is CCW in SVG), we need sweep=0.
+*/
+async function constructionReuleaux() {
+  setLabel("REULEAUX-DRIEHOEK", 'kromme van constante breedte');
+  showLabel();
+
+  const s = 280;  // larger size for the bigger viewBox
+  // SVG coords: y increases downward. We want a triangle pointing UP visually.
+  // A = top (smaller y in SVG), B = bottom-left, C = bottom-right.
+  const A = [0, -s / Math.sqrt(3)];
+  const B = [-s/2, s / (2*Math.sqrt(3))];
+  const C = [s/2, s / (2*Math.sqrt(3))];
+
+  const dots = [A, B, C].map(([x, y]) =>
+    el('circle', { cx: x, cy: y, r: 0, fill: COLORS.point })
+  );
+  await animate(500, t => dots.forEach(d => setAttrs(d, { r: 5 * t })));
+  await delay(300);
+
+  const tri = el('polygon', {
+    points: `${A[0]},${A[1]} ${B[0]},${B[1]} ${C[0]},${C[1]}`,
+    fill: 'none', stroke: COLORS.guideMuted, 'stroke-width': 1.2, opacity: 0
+  });
+  await animate(600, t => setAttrs(tri, { opacity: 0.5 * t }));
+
+  const circles = [];
+  for (const center of [A, B, C]) {
+    const c = el('circle', {
+      cx: center[0], cy: center[1], r: 0,
+      fill: 'none', stroke: COLORS.guide, 'stroke-width': 1.6, opacity: 0.9
+    });
+    circles.push(c);
+    await animate(700, t => setAttrs(c, { r: s * t }));
+    await delay(180);
   }
-  resize();
-  window.addEventListener('resize', resize);
-  const NUM = 30;
-  const drifters = [];
-  for (let i = 0; i < NUM; i++) {
-    const c = Wiskamp.palette(Math.random() * 0.6);
-    drifters.push({
-      x: Math.random() * window.innerWidth,
-      y: Math.random() * window.innerHeight,
-      vx: (Math.random() - 0.5) * 1.2,
-      vy: (Math.random() - 0.5) * 0.8,
-      r: 1.2 + Math.random() * 1.8,
-      cr: Math.round(c[0] * 255),
-      cg: Math.round(c[1] * 255),
-      cb: Math.round(c[2] * 255),
-      alpha: 0.35 + Math.random() * 0.45
+  await delay(700);
+
+  /*
+    REULEAUX PATH (FIXED)
+    Reuleaux = intersection of the three circles.
+    Each arc connects two vertices, centered at the third (opposite) vertex,
+    bulging OUTWARD (convex from the centroid's perspective).
+
+    SVG arc command: A rx ry x-axis-rotation large-arc-flag sweep-flag x y
+    For each arc: it's a 60° arc (the angle subtended at the opposite vertex), so
+    large-arc-flag = 0.
+
+    Sweep direction: for the arc to bulge OUTWARD from the centroid, we go around
+    the "near" side. With our SVG coordinate system (y flipped), the visual
+    counter-clockwise sweep needs sweep-flag = 0.
+
+    Tracing B → C: arc centered at A, radius s, bulging outward (downward, away
+    from A). In SVG, this is sweep-flag=0.
+    Tracing C → A: arc centered at B, radius s, bulging outward (upper-right, away
+    from B). sweep-flag=0.
+    Tracing A → B: arc centered at C, radius s, bulging outward (upper-left, away
+    from C). sweep-flag=0.
+  */
+  const reuleauxPath = `
+    M ${B[0]} ${B[1]}
+    A ${s} ${s} 0 0 0 ${C[0]} ${C[1]}
+    A ${s} ${s} 0 0 0 ${A[0]} ${A[1]}
+    A ${s} ${s} 0 0 0 ${B[0]} ${B[1]}
+    Z
+  `;
+  const reuleaux = el('path', {
+    d: reuleauxPath,
+    fill: paletteCSS(0.95, 0),
+    stroke: COLORS.trace, 'stroke-width': 0,
+    'stroke-linejoin': 'round'
+  });
+  await animate(900, t => {
+    setAttrs(reuleaux, {
+      fill: paletteCSS(0.95, 0.20 * t),
+      'stroke-width': 3.5 * t
+    });
+  });
+  await delay(800);
+
+  await animate(900, t => {
+    circles.forEach(c => setAttrs(c, { opacity: 0.9 * (1 - t) }));
+    setAttrs(tri, { opacity: 0.5 * (1 - t) });
+    dots.forEach(d => setAttrs(d, { r: 5 * (1 - t) }));
+  });
+
+  // Bounding square. Side length = s (since Reuleaux has constant width s).
+  const square = el('rect', {
+    x: -s/2, y: -s/2, width: s, height: s,
+    fill: 'none', stroke: COLORS.guideMuted, 'stroke-width': 1.6, opacity: 0
+  });
+  await animate(700, t => setAttrs(square, { opacity: 0.6 * t }));
+
+  /*
+    PROPER ROTOR MOTION
+    A Reuleaux triangle has constant WIDTH s in every direction, but rotating it
+    about its centroid does NOT keep it inscribed in a square — its center of mass
+    must move in a small curve. This is exactly the mechanism behind the Wankel
+    engine and the square-hole drill bit.
+
+    Approach: for each rotation angle φ, we sample points on the Reuleaux's boundary
+    in WORLD coordinates (after rotation, before translation), compute the actual
+    min/max x and y, and translate so that the bounding-box center is at (0, 0).
+
+    The Reuleaux boundary has 3 arcs: each centered at one of the original vertices
+    (A, B, C), spanning a 60° angle from one neighbor to the other. We rotate those
+    centers by φ first, then sample each arc at fine resolution, then find min/max.
+  */
+  // Rotation matrix
+  function rotPt([x, y], phi) {
+    const c = Math.cos(phi), s = Math.sin(phi);
+    return [x * c - y * s, x * s + y * c];
+  }
+  // Sample many points on the Reuleaux boundary at rotation φ. Returns array of [x, y].
+  function reuleauxBoundary(phi, N = 90) {
+    const pts = [];
+    const Ar = rotPt(A, phi), Br = rotPt(B, phi), Cr = rotPt(C, phi);
+    // Arc B → C, centered at A, sweeping the 60° toward the OPPOSITE side from A.
+    // Angle from A to B is some α; angle from A to C is α + 60° (since Δangle = 60°).
+    // Sample N/3 points from α to α+60°.
+    function sampleArc(center, startVec, endVec, count) {
+      // startVec, endVec are vectors from center to start/end points.
+      const a0 = Math.atan2(startVec[1], startVec[0]);
+      const a1 = Math.atan2(endVec[1], endVec[0]);
+      // Determine the shorter sweep direction (60° arc, so δ should be ±60° = ±π/3)
+      let da = a1 - a0;
+      // Wrap into [-π, π]
+      while (da > Math.PI) da -= 2 * Math.PI;
+      while (da < -Math.PI) da += 2 * Math.PI;
+      for (let i = 0; i <= count; i++) {
+        const t = i / count;
+        const a = a0 + da * t;
+        pts.push([center[0] + s * Math.cos(a), center[1] + s * Math.sin(a)]);
+      }
+    }
+    // Three arcs: B→C centered at A, C→A centered at B, A→B centered at C
+    const each = Math.floor(N / 3);
+    sampleArc(Ar, [Br[0]-Ar[0], Br[1]-Ar[1]], [Cr[0]-Ar[0], Cr[1]-Ar[1]], each);
+    sampleArc(Br, [Cr[0]-Br[0], Cr[1]-Br[1]], [Ar[0]-Br[0], Ar[1]-Br[1]], each);
+    sampleArc(Cr, [Ar[0]-Cr[0], Ar[1]-Cr[1]], [Br[0]-Cr[0], Br[1]-Cr[1]], each);
+    return pts;
+  }
+  // Compute the offset needed at rotation φ to keep the rotor centered in the square
+  function rotorOffset(phi) {
+    const pts = reuleauxBoundary(phi);
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (const [x, y] of pts) {
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+    }
+    // Center of bounding box should land at (0, 0)
+    return [-(minX + maxX) / 2, -(minY + maxY) / 2];
+  }
+
+  await animate(7000, t => {
+    const phi = t * Math.PI * 3;  // 1.5 full rotations
+    const angleDeg = phi * 180 / Math.PI;
+    const [ox, oy] = rotorOffset(phi);
+    // Apply translation BEFORE rotation in SVG transform string:
+    // The point (0,0) in the Reuleaux's local frame should land at (ox, oy) globally
+    // after rotation. So we use translate(ox, oy) THEN rotate.
+    setAttrs(reuleaux, { transform: `translate(${ox.toFixed(2)} ${oy.toFixed(2)}) rotate(${angleDeg.toFixed(2)})` });
+  }, t => t);
+
+  await delay(700);
+  hideLabel();
+  await animate(900, t => stage.style.opacity = (1 - t).toString());
+}
+
+/*
+  3. HEXAGON CONSTRUCTION (PROPER)
+  Step by step:
+    1. Draw main circle, center O, radius R.
+    2. Pick point P0 on circumference.
+    3. Draw FULL circle centered at P0, radius R. It crosses the main circle at P1 and P5.
+    4. Draw FULL circle centered at P1 (radius R). Crosses main circle at P0 and P2.
+    5. Continue: circles at P2, P3, P4 each give the next vertex.
+    6. Connect P0–P1–...–P5–P0.
+
+  This produces the classic "rosette" / "flower of life" pattern as the helper circles
+  go in, and demonstrates the property that side = radius.
+*/
+async function constructionHexagon() {
+  setLabel('REGELMATIGE ZESHOEK', 'met passer en liniaal');
+  showLabel();
+
+  const R = 200;
+
+  // Main circle
+  const mainCircle = el('circle', {
+    cx: 0, cy: 0, r: 0,
+    fill: 'none', stroke: COLORS.guide, 'stroke-width': 1.6
+  });
+  await animate(800, t => setAttrs(mainCircle, { r: R * t }));
+  await delay(400);
+
+  // Six vertices, starting at the right (angle 0) and going CCW in math (CW in SVG)
+  // P0 at right (angle 0), P1 upper-right, P2 upper-left, P3 left, P4 lower-left, P5 lower-right.
+  // In SVG (y-flipped), we use math angles directly with y = R*sin(angle), and SVG renders
+  // y downward. So if we want a vertex visually "up", we use negative y. Math sin is positive
+  // for upper half, but in SVG that goes down. So we negate: y = -R*sin(angle).
+  const verts = [];
+  for (let i = 0; i < 6; i++) {
+    const a = i * Math.PI / 3;
+    verts.push([R * Math.cos(a), -R * Math.sin(a)]);
+  }
+
+  // Place first dot
+  const dots = [];
+  const firstDot = el('circle', { cx: verts[0][0], cy: verts[0][1], r: 0, fill: COLORS.point });
+  dots.push(firstDot);
+  await animate(400, t => setAttrs(firstDot, { r: 5 * t }));
+
+  // For each vertex P0..P4, draw the helper circle centered there with radius R.
+  // The next vertex is then highlighted (it's at the intersection with the main circle).
+  const helperCircles = [];
+  for (let i = 0; i < 5; i++) {
+    const center = verts[i];
+    const helper = el('circle', {
+      cx: center[0], cy: center[1], r: 0,
+      fill: 'none', stroke: COLORS.guideMuted, 'stroke-width': 1.3, opacity: 0.85
+    });
+    helperCircles.push(helper);
+    await animate(550, t => setAttrs(helper, { r: R * t }));
+
+    // Highlight the new vertex (the next one, which is on the helper circle and main circle)
+    const next = verts[(i + 1) % 6];
+    const nextDot = el('circle', { cx: next[0], cy: next[1], r: 0, fill: COLORS.point });
+    dots.push(nextDot);
+    await animate(280, t => setAttrs(nextDot, { r: 5 * t }));
+  }
+  await delay(700);
+
+  // Now connect all 6 vertices with chord segments forming the hexagon.
+  // Draw underneath helper circles by inserting before them.
+  const lines = [];
+  for (let i = 0; i < 6; i++) {
+    const p1 = verts[i];
+    const p2 = verts[(i + 1) % 6];
+    const glow = el('line', {
+      x1: p1[0], y1: p1[1], x2: p1[0], y2: p1[1],
+      stroke: COLORS.trace, 'stroke-width': 8,
+      'stroke-linecap': 'round', opacity: 0.25
+    });
+    const line = el('line', {
+      x1: p1[0], y1: p1[1], x2: p1[0], y2: p1[1],
+      stroke: COLORS.trace, 'stroke-width': 2.8,
+      'stroke-linecap': 'round'
+    });
+    lines.push({ glow, line, p1, p2 });
+    await animate(380, t => {
+      const x = p1[0] + (p2[0] - p1[0]) * t;
+      const y = p1[1] + (p2[1] - p1[1]) * t;
+      setAttrs(line, { x2: x, y2: y });
+      setAttrs(glow, { x2: x, y2: y });
     });
   }
-  function tick(){
-    requestAnimationFrame(tick);
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.globalCompositeOperation = 'lighter';
-    for (let i = 0; i < drifters.length; i++) {
-      const d = drifters[i];
-      d.x += d.vx;
-      d.y += d.vy;
-      d.vx += (Math.random() - 0.5) * 0.04;
-      d.vy += (Math.random() - 0.5) * 0.025;
-      d.vx *= 0.998;
-      d.vy *= 0.998;
-      const speed = Math.sqrt(d.vx * d.vx + d.vy * d.vy);
-      if (speed < 0.15) {
-        const ang = Math.random() * Math.PI * 2;
-        d.vx += Math.cos(ang) * 0.3;
-        d.vy += Math.sin(ang) * 0.2;
-      }
-      if (speed > 1.8) {
-        d.vx *= 1.8 / speed;
-        d.vy *= 1.8 / speed;
-      }
-      if (d.x < -10) d.x = window.innerWidth + 10;
-      if (d.x > window.innerWidth + 10) d.x = -10;
-      if (d.y < -10) d.y = window.innerHeight + 10;
-      if (d.y > window.innerHeight + 10) d.y = -10;
-      const a = d.alpha * 0.7;
-      const grad = ctx.createRadialGradient(d.x, d.y, 0, d.x, d.y, d.r * 6);
-      grad.addColorStop(0, `rgba(${d.cr},${d.cg},${d.cb},${a})`);
-      grad.addColorStop(0.4, `rgba(${d.cr},${d.cg},${d.cb},${a * 0.3})`);
-      grad.addColorStop(1, `rgba(${d.cr},${d.cg},${d.cb},0)`);
-      ctx.fillStyle = grad;
-      ctx.beginPath();
-      ctx.arc(d.x, d.y, d.r * 6, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.globalCompositeOperation = 'source-over';
+
+  await delay(1200);
+
+  // Fade out helper geometry, keep hexagon
+  await animate(1000, t => {
+    setAttrs(mainCircle, { opacity: 1 - t });
+    helperCircles.forEach(h => setAttrs(h, { opacity: 0.85 * (1 - t) }));
+    dots.forEach(d => setAttrs(d, { r: 5 * (1 - t) }));
+  });
+
+  await delay(1500);
+  hideLabel();
+  await animate(900, t => stage.style.opacity = (1 - t).toString());
+}
+
+/*
+  4. REGULAR NEPHROID via rolling circle
+  Larger now: outer fixed circle radius 140, rolling small circle radius 70.
+*/
+async function constructionNephroid() {
+  setLabel('NEPHROID', 'kleine cirkel die om grotere rolt');
+  showLabel();
+
+  const r = 70;
+  const R = 2 * r;
+  const totalAngle = Math.PI * 2;
+
+  const bigCircle = el('circle', {
+    cx: 0, cy: 0, r: 0,
+    fill: 'none', stroke: COLORS.guide, 'stroke-width': 1.6
+  });
+  await animate(700, t => setAttrs(bigCircle, { r: R * t }));
+  await delay(300);
+
+  const smallCircle = el('circle', {
+    cx: R + r, cy: 0, r: r,
+    fill: 'none', stroke: COLORS.guide, 'stroke-width': 1.5, opacity: 0.9
+  });
+  const tracePt = el('circle', { cx: R, cy: 0, r: 5, fill: COLORS.point });
+  const spoke = el('line', {
+    x1: R + r, y1: 0, x2: R, y2: 0,
+    stroke: COLORS.guideMuted, 'stroke-width': 1.2
+  });
+
+  const traceCurve = el('polyline', {
+    points: '', fill: 'none', stroke: COLORS.trace, 'stroke-width': 2.8,
+    'stroke-linecap': 'round', 'stroke-linejoin': 'round'
+  });
+  const traceGlow = el('polyline', {
+    points: '', fill: 'none', stroke: COLORS.trace, 'stroke-width': 9,
+    'stroke-linecap': 'round', 'stroke-linejoin': 'round', opacity: 0.25
+  });
+  stage.insertBefore(traceGlow, smallCircle);
+  stage.insertBefore(traceCurve, smallCircle);
+
+  const points = [];
+  await animate(8500, t => {
+    const theta = t * totalAngle;
+    const cx = (R + r) * Math.cos(theta);
+    const cy = -(R + r) * Math.sin(theta);  // SVG y flip
+    const k = R / r;
+    const px = (R + r) * Math.cos(theta) - r * Math.cos((k + 1) * theta);
+    const py = -((R + r) * Math.sin(theta) - r * Math.sin((k + 1) * theta));
+    setAttrs(smallCircle, { cx, cy });
+    setAttrs(tracePt, { cx: px, cy: py });
+    setAttrs(spoke, { x1: cx, y1: cy, x2: px, y2: py });
+    points.push(`${px.toFixed(1)},${py.toFixed(1)}`);
+    const ptStr = points.join(' ');
+    setAttrs(traceCurve, { points: ptStr });
+    setAttrs(traceGlow, { points: ptStr });
+  }, t => t);
+
+  await delay(1500);
+  hideLabel();
+  await animate(900, t => stage.style.opacity = (1 - t).toString());
+}
+
+/*
+  5. FREETH'S NEPHROID via THREE ROTATING ARMS
+  ---
+  Derivation: Freeth's nephroid is r = a(1 + 2 sin(θ/2)) in polar form.
+  Multiplying out and converting to Cartesian via complex exponentials:
+
+    z(θ) = r·e^{iθ} = a·e^{iθ} + (a/i)·(e^{i·3θ/2} - e^{i·θ/2})
+         = a·e^{iθ} + i·a·e^{i·θ/2} - i·a·e^{i·3θ/2}
+
+  Three rotating vectors, each of length `a`:
+    Arm A: rotates at angular speed ½θ, with constant phase offset +π/2  (factor +i)
+    Arm B: rotates at angular speed   θ, no phase offset
+    Arm C: rotates at angular speed 3/2·θ, with phase offset −π/2  (factor −i)
+
+  As θ goes from 0 to 4π:
+    Arm A makes 1 full revolution (rotates by 2π)
+    Arm B makes 2 full revolutions (rotates by 4π)
+    Arm C makes 3 full revolutions (rotates by 6π)
+
+  So the angular speeds are in ratio 1:2:3 — exactly what Bart said.
+
+  Animation visualization:
+    - Three arm segments connected end-to-end at the origin
+    - Each arm rotates at its own speed
+    - The tip of the third arm traces the nephroid
+    - Arms colored progressively from teal → mid → gold so the speed hierarchy reads
+*/
+async function constructionFreethNephroid() {
+  setLabel("FREETH'S NEPHROID", 'drie roterende armen, snelheden 1:2:3');
+  showLabel();
+
+  const a = 110;  // arm length
+  const TOTAL_THETA = Math.PI * 4;  // full curve takes θ from 0 to 4π
+
+  // Origin marker
+  const origin = el('circle', { cx: 0, cy: 0, r: 0, fill: COLORS.point });
+  await animate(400, t => setAttrs(origin, { r: 4 * t }));
+
+  /*
+    Arms. Each arm is a line segment plus a joint dot at its endpoint.
+    We compute their endpoints from the complex-number formula:
+      P0 = origin (0, 0)
+      P1 = P0 + a · e^{i(θ/2 + π/2)}        [arm 1 endpoint]
+      P2 = P1 + a · e^{iθ}                  [arm 2 endpoint]
+      P3 = P2 + a · e^{i(3θ/2 - π/2)}       [arm 3 endpoint — traces the nephroid]
+
+    The traced curve is P3 (the tip of the third arm).
+  */
+  const arm1 = el('line', { x1: 0, y1: 0, x2: 0, y2: 0,
+    stroke: COLORS.arm1, 'stroke-width': 2.5, 'stroke-linecap': 'round' });
+  const arm2 = el('line', { x1: 0, y1: 0, x2: 0, y2: 0,
+    stroke: COLORS.arm2, 'stroke-width': 2.5, 'stroke-linecap': 'round' });
+  const arm3 = el('line', { x1: 0, y1: 0, x2: 0, y2: 0,
+    stroke: COLORS.arm3, 'stroke-width': 2.5, 'stroke-linecap': 'round' });
+  const joint1 = el('circle', { cx: 0, cy: 0, r: 4, fill: COLORS.arm1 });
+  const joint2 = el('circle', { cx: 0, cy: 0, r: 4, fill: COLORS.arm2 });
+  const tipPt = el('circle', { cx: 0, cy: 0, r: 5, fill: COLORS.point });
+
+  // Trace
+  const traceCurve = el('polyline', {
+    points: '', fill: 'none', stroke: COLORS.trace, 'stroke-width': 2.6,
+    'stroke-linecap': 'round', 'stroke-linejoin': 'round'
+  });
+  const traceGlow = el('polyline', {
+    points: '', fill: 'none', stroke: COLORS.trace, 'stroke-width': 8,
+    'stroke-linecap': 'round', 'stroke-linejoin': 'round', opacity: 0.25
+  });
+  // Render the trace beneath the arms
+  stage.insertBefore(traceGlow, arm1);
+  stage.insertBefore(traceCurve, arm1);
+
+  // Helper: convert a complex angle (math convention) to SVG offset
+  // Returns [dx, dy] for an arm of length `a` at angle θ_math.
+  function armOffset(angleMath) {
+    return [a * Math.cos(angleMath), -a * Math.sin(angleMath)];  // SVG y-flip
   }
-  tick();
-})();
+
+  const points = [];
+  await animate(11000, t => {
+    const theta = t * TOTAL_THETA;
+    // Arm angles (math convention, before y-flip)
+    const a1 = theta / 2 + Math.PI / 2;
+    const a2 = theta;
+    const a3 = 3 * theta / 2 - Math.PI / 2;
+
+    const [d1x, d1y] = armOffset(a1);
+    const [d2x, d2y] = armOffset(a2);
+    const [d3x, d3y] = armOffset(a3);
+
+    const P0 = [0, 0];
+    const P1 = [P0[0] + d1x, P0[1] + d1y];
+    const P2 = [P1[0] + d2x, P1[1] + d2y];
+    const P3 = [P2[0] + d3x, P2[1] + d3y];
+
+    setAttrs(arm1, { x1: P0[0], y1: P0[1], x2: P1[0], y2: P1[1] });
+    setAttrs(arm2, { x1: P1[0], y1: P1[1], x2: P2[0], y2: P2[1] });
+    setAttrs(arm3, { x1: P2[0], y1: P2[1], x2: P3[0], y2: P3[1] });
+    setAttrs(joint1, { cx: P1[0], cy: P1[1] });
+    setAttrs(joint2, { cx: P2[0], cy: P2[1] });
+    setAttrs(tipPt, { cx: P3[0], cy: P3[1] });
+
+    points.push(`${P3[0].toFixed(1)},${P3[1].toFixed(1)}`);
+    const ptStr = points.join(' ');
+    setAttrs(traceCurve, { points: ptStr });
+    setAttrs(traceGlow, { points: ptStr });
+  }, t => t);
+
+  await delay(2200);
+  hideLabel();
+  await animate(900, t => stage.style.opacity = (1 - t).toString());
+}
+
+/* =====================================================================
+   ORCHESTRATOR
+   ===================================================================== */
+
+const constructions = [
+  constructionCycloid,
+  constructionReuleaux,
+  constructionHexagon,
+  constructionNephroid,
+  constructionFreethNephroid
+];
+
+async function runForever() {
+  let i = 0;
+  // Initial state: empty stage at opacity 1 (so first construction shows up)
+  stage.style.opacity = '1';
+  while (true) {
+    try {
+      // Each construction is responsible for fading the stage to 0 at the end.
+      // It does NOT reset opacity to 1 — the orchestrator does that, AFTER
+      // clearing the stage, so there's no flash of the previous construction.
+      await constructions[i]();
+    } catch (e) {
+      console.error('construction error:', e);
+      await delay(1000);
+    }
+    // Stage is now invisible (opacity 0). Safe to clear and reset opacity
+    // without any visible flicker — the user sees nothing during this swap.
+    clearStage();
+    stage.style.opacity = '1';
+    await delay(400);
+    i = (i + 1) % constructions.length;
+  }
+}
+
+runForever();
+
+// Ambient drift uit shared.js
+Wiskamp.initAmbientDrift();
+
+// Entrance-class triggeren
+requestAnimationFrame(() => document.body.classList.add('ready'));
 </script>
 </body>
 </html>

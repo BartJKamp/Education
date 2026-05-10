@@ -167,12 +167,94 @@ window.Wiskamp = (function(){
     });
   }
 
+  /*
+    AMBIENT DRIFT
+    Reusable 2D ambient particle layer. Looks for <canvas id="ambient-canvas">
+    and animates softly-glowing drifters in the peacock palette.
+    Call once after DOM ready: Wiskamp.initAmbientDrift();
+  */
+  function initAmbientDrift(opts){
+    opts = opts || {};
+    const NUM = opts.num || 30;
+    const tRange = opts.paletteRange || [0, 0.6];
+    const canvas = document.getElementById('ambient-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    function resize(){
+      const dpr = Math.min(window.devicePixelRatio, 2);
+      canvas.width = window.innerWidth * dpr;
+      canvas.height = window.innerHeight * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    const drifters = [];
+    for (let i = 0; i < NUM; i++) {
+      const tt = tRange[0] + Math.random() * (tRange[1] - tRange[0]);
+      const c = palette(tt);
+      drifters.push({
+        x: Math.random() * window.innerWidth,
+        y: Math.random() * window.innerHeight,
+        vx: (Math.random() - 0.5) * 1.2,
+        vy: (Math.random() - 0.5) * 0.8,
+        r: 1.2 + Math.random() * 1.8,
+        cr: Math.round(c[0] * 255),
+        cg: Math.round(c[1] * 255),
+        cb: Math.round(c[2] * 255),
+        alpha: 0.35 + Math.random() * 0.45
+      });
+    }
+
+    function tick(){
+      requestAnimationFrame(tick);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.globalCompositeOperation = 'lighter';
+      for (let i = 0; i < drifters.length; i++) {
+        const d = drifters[i];
+        d.x += d.vx;
+        d.y += d.vy;
+        d.vx += (Math.random() - 0.5) * 0.04;
+        d.vy += (Math.random() - 0.5) * 0.025;
+        d.vx *= 0.998;
+        d.vy *= 0.998;
+        const speed = Math.sqrt(d.vx * d.vx + d.vy * d.vy);
+        if (speed < 0.15) {
+          const ang = Math.random() * Math.PI * 2;
+          d.vx += Math.cos(ang) * 0.3;
+          d.vy += Math.sin(ang) * 0.2;
+        }
+        if (speed > 1.8) {
+          d.vx *= 1.8 / speed;
+          d.vy *= 1.8 / speed;
+        }
+        if (d.x < -10) d.x = window.innerWidth + 10;
+        if (d.x > window.innerWidth + 10) d.x = -10;
+        if (d.y < -10) d.y = window.innerHeight + 10;
+        if (d.y > window.innerHeight + 10) d.y = -10;
+        const a = d.alpha * 0.7;
+        const grad = ctx.createRadialGradient(d.x, d.y, 0, d.x, d.y, d.r * 6);
+        grad.addColorStop(0, `rgba(${d.cr},${d.cg},${d.cb},${a})`);
+        grad.addColorStop(0.4, `rgba(${d.cr},${d.cg},${d.cb},${a * 0.3})`);
+        grad.addColorStop(1, `rgba(${d.cr},${d.cg},${d.cb},0)`);
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(d.x, d.y, d.r * 6, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalCompositeOperation = 'source-over';
+    }
+    tick();
+  }
+
   return {
     palette: palette,
     softCircleTexture: softCircleTexture,
     ATTRACTORS: ATTRACTORS,
     genTrail: genTrail,
-    createPointsMaterial: createPointsMaterial
+    createPointsMaterial: createPointsMaterial,
+    initAmbientDrift: initAmbientDrift
   };
 
 })();

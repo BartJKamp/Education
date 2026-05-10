@@ -1,0 +1,1299 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Wisbordje</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@400;500;700&display=swap');
+  :root {
+    --bg:#0f0f13; --surface:#1a1a22; --surface2:#22222e; --border:#2e2e40;
+    --fg:#f0f0f8; --fg-dim:#6b6b88; --fg-faint:#333348;
+    --accent:#7c6af7; --accent-light:#a89df7;
+    --canvas-bg:#111116; --green:#48bb78; --orange:#f6ad55; --red:#f56565;
+    --blue:#3366ff;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--bg); color:var(--fg); font-family:'DM Sans',sans-serif; height:100vh; display:flex; flex-direction:column; overflow:hidden; }
+
+  /* JOIN */
+  #join-screen { flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:32px;padding:24px; }
+  .join-logo { font-family:'Space Mono',monospace;font-size:clamp(28px,6vw,48px);font-weight:700; }
+  .join-logo span { color:var(--accent-light); }
+  .join-card { background:var(--surface);border:1.5px solid var(--border);border-radius:16px;padding:32px 40px;width:100%;max-width:400px;display:flex;flex-direction:column;gap:16px; }
+  .join-label { font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--fg-dim);margin-bottom:2px; }
+  .join-input { width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;padding:14px 16px;color:var(--fg);font-family:'Space Mono',monospace;font-size:18px;font-weight:700;letter-spacing:.1em;outline:none;transition:border-color .15s;text-transform:uppercase; }
+  .join-input:focus { border-color:var(--accent); }
+  .join-input.naam { text-transform:none;letter-spacing:0;font-size:16px;font-weight:400;font-family:'DM Sans',sans-serif; }
+  .join-btn { width:100%;padding:16px;background:var(--accent);border:none;border-radius:10px;color:#fff;font-family:'DM Sans',sans-serif;font-size:16px;font-weight:700;cursor:pointer;transition:background .15s,transform .1s;margin-top:8px; }
+  .join-btn:hover { background:var(--accent-light); }
+  .join-btn:active { transform:scale(.97); }
+  .join-error { font-size:13px;color:var(--red);text-align:center;min-height:18px;font-family:'Space Mono',monospace; }
+
+  /* BOARD */
+  #board-screen { display:none;flex-direction:column;height:100vh;overflow:hidden; }
+
+  /* TOOLBAR */
+  .toolbar { display:flex;align-items:center;gap:5px;padding:6px 10px;background:var(--surface);border-bottom:1.5px solid var(--border);flex-shrink:0;flex-wrap:wrap; }
+  .toolbar-name { font-family:'Space Mono',monospace;font-size:12px;color:var(--fg-dim);white-space:nowrap; }
+  .toolbar-name span { color:var(--accent-light); }
+  .tool-sep { width:1px;height:24px;background:var(--border);margin:0 3px;flex-shrink:0; }
+  .tool-btn { width:36px;height:36px;background:transparent;border:1.5px solid transparent;border-radius:8px;color:var(--fg-dim);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .12s,border-color .12s,color .12s;flex-shrink:0; }
+  .tool-btn:hover { background:var(--bg);color:var(--fg); }
+  .tool-btn.active { background:var(--accent);border-color:var(--accent);color:#fff; }
+
+  /* Instrument knoppen: active staat = paars-glow ipv solid (omdat het naast je teken-tool actief is, niet ervoor in de plaats) */
+  .tool-btn.instrument-btn.active {
+    background:rgba(124,106,247,0.18);
+    border-color:var(--accent);
+    color:var(--accent-light);
+    box-shadow:0 0 0 1px var(--accent) inset, 0 0 14px rgba(124,106,247,0.35);
+  }
+  .color-dot { width:22px;height:22px;border-radius:50%;border:2px solid transparent;cursor:pointer;flex-shrink:0;transition:transform .12s,border-color .12s; }
+  .color-dot:hover { transform:scale(1.15); }
+  .color-dot.active { border-color:var(--fg);transform:scale(1.15); }
+  .size-btn { width:32px;height:32px;background:transparent;border:1.5px solid var(--border);border-radius:8px;color:var(--fg);font-family:'Space Mono',monospace;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .12s,border-color .12s;flex-shrink:0; }
+  .size-btn:hover,.size-btn.active { background:var(--border);border-color:var(--fg-dim); }
+  .linestyle-btn { width:36px;height:36px;background:transparent;border:1.5px solid transparent;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .12s,border-color .12s; }
+  .linestyle-btn:hover { background:var(--bg); }
+  .linestyle-btn.active { background:var(--accent);border-color:var(--accent); }
+  .linestyle-btn svg { width:22px;height:14px; }
+
+  /* SHAPES DROPDOWN */
+  .shapes-wrap { position:relative;flex-shrink:0; }
+  .shapes-trigger { width:36px;height:36px;background:transparent;border:1.5px solid transparent;border-radius:8px;color:var(--fg-dim);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .12s,border-color .12s,color .12s;gap:2px; }
+  .shapes-trigger:hover { background:var(--bg);color:var(--fg); }
+  .shapes-trigger.active { background:var(--accent);border-color:var(--accent);color:#fff; }
+  .shapes-trigger .caret { font-size:8px;opacity:.6; }
+  .shapes-dropdown { display:none;position:absolute;top:calc(100% + 6px);left:0;z-index:200;background:var(--surface2);border:1.5px solid var(--border);border-radius:12px;padding:8px;width:220px;box-shadow:0 8px 32px rgba(0,0,0,0.5); }
+  .shapes-dropdown.open { display:block; }
+  .shapes-section-label { font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--fg-dim);padding:4px 6px 2px; }
+  .shapes-divider { height:1px;background:var(--border);margin:6px 0; }
+  .shapes-grid { display:grid;grid-template-columns:repeat(5,1fr);gap:3px; }
+  .shape-item { width:36px;height:36px;background:transparent;border:1.5px solid transparent;border-radius:8px;color:var(--fg-dim);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .1s,color .1s,border-color .1s;flex-direction:column;gap:1px; }
+  .shape-item:hover { background:var(--bg);color:var(--fg);border-color:var(--border); }
+  .shape-item.active { background:var(--accent);border-color:var(--accent);color:#fff; }
+  .shape-item svg { width:18px;height:18px; }
+  .shape-item .shape-label { font-size:7px;font-family:'Space Mono',monospace;line-height:1;opacity:.7; }
+  .shape-input-row { display:flex;align-items:center;gap:6px;padding:4px 6px; }
+  .shape-input-row label { font-family:'Space Mono',monospace;font-size:10px;color:var(--fg-dim);white-space:nowrap; }
+  .shape-input-row input { width:48px;background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--fg);font-family:'Space Mono',monospace;font-size:12px;padding:3px 6px;outline:none; }
+  .shape-input-row input:focus { border-color:var(--accent); }
+
+  /* TOOLBAR RIGHT */
+  .toolbar-right { margin-left:auto;display:flex;align-items:center;gap:5px;flex-shrink:0; }
+  .undo-btn { width:36px;height:36px;background:transparent;border:1.5px solid var(--border);border-radius:8px;color:var(--fg-dim);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0; }
+  .undo-btn:hover { color:var(--fg);border-color:var(--fg-dim); }
+  .clear-btn { padding:5px 10px;background:transparent;border:1.5px solid var(--border);border-radius:8px;color:var(--fg-dim);font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;transition:all .15s;white-space:nowrap; }
+  .clear-btn:hover { background:#3d1f1f;color:var(--red);border-color:var(--red); }
+  .hand-btn { padding:5px 10px;background:transparent;border:1.5px solid var(--border);border-radius:8px;color:var(--fg-dim);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;white-space:nowrap; }
+  .hand-btn:hover,.hand-btn.raised { background:#1a1a3a;color:#6699ff;border-color:var(--blue); }
+  .klaar-btn { padding:5px 10px;background:transparent;border:1.5px solid var(--border);border-radius:8px;color:var(--fg-dim);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer;transition:all .15s;white-space:nowrap; }
+  .klaar-btn:hover,.klaar-btn.klaar { background:#1a2e1a;color:var(--green);border-color:var(--green); }
+
+  /* CANVAS */
+  .canvas-wrap { flex:1;position:relative;overflow:hidden;background:var(--canvas-bg); }
+  #board-canvas { position:absolute;top:0;left:0;width:100%;height:100%;touch-action:none;cursor:crosshair; }
+  .zoom-indicator { position:absolute;bottom:12px;right:12px;font-family:'Space Mono',monospace;font-size:11px;color:var(--fg-dim);background:rgba(10,10,20,0.7);padding:4px 10px;border-radius:6px;pointer-events:none; }
+  .fit-btn { position:absolute;bottom:12px;left:12px;background:var(--surface);border:1.5px solid var(--border);border-radius:8px;color:var(--fg-dim);font-family:'DM Sans',sans-serif;font-size:12px;padding:6px 12px;cursor:pointer; }
+  .fit-btn:hover { color:var(--fg);border-color:var(--fg-dim); }
+
+  /* TEXT INPUT */
+  #text-input-overlay { display:none;position:absolute;z-index:50;background:transparent;border:1.5px dashed var(--accent);border-radius:3px;overflow:hidden; }
+  #text-input-overlay.visible { display:block; }
+  #text-textarea { width:100%;height:100%;background:transparent;border:none;outline:none;color:var(--fg);font-family:'Space Mono',monospace;font-size:16px;resize:none;padding:4px;line-height:1.4; }
+
+  .status-dot { width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0;box-shadow:0 0 6px var(--green); }
+
+  /* ════════════════════════════════════════
+     OVERLAYS — Freeze, Spotlight, Timer-up
+  ════════════════════════════════════════ */
+
+  /* FREEZE — bordje vervaagd + slot */
+  .freeze-overlay { display:none;position:absolute;inset:0;z-index:80;background:rgba(15,15,30,0.55);backdrop-filter:blur(2px);align-items:center;justify-content:center;flex-direction:column;gap:14px;pointer-events:all;cursor:not-allowed; }
+  .freeze-overlay.visible { display:flex; }
+  .freeze-icon { font-size:64px;filter:drop-shadow(0 4px 16px rgba(0,0,0,0.6)); }
+  .freeze-text { font-family:'Space Mono',monospace;font-size:18px;font-weight:700;color:#a8c8ff;letter-spacing:.05em;text-shadow:0 2px 12px rgba(0,0,0,0.7); }
+  .freeze-sub { font-family:'Space Mono',monospace;font-size:12px;color:var(--fg-dim); }
+
+  /* TIMER-UP — vervangt freeze visueel als hij door timer kwam */
+  .freeze-overlay.timer-up .freeze-icon { font-size:72px; }
+  .freeze-overlay.timer-up .freeze-text { color:var(--orange); }
+
+  /* SPOTLIGHT — full-screen view van iemand anders bordje */
+  #spotlight-screen {
+    display:none;position:fixed;inset:0;z-index:90;
+    background:var(--canvas-bg); flex-direction:column;
+  }
+  #spotlight-screen.visible { display:flex; }
+  .spotlight-bar {
+    display:flex;align-items:center;gap:12px;padding:10px 16px;
+    background:linear-gradient(90deg, rgba(124,106,247,0.15), rgba(124,106,247,0.05));
+    border-bottom:2px solid var(--accent);
+    flex-shrink:0;
+  }
+  .spotlight-icon { font-size:22px; }
+  .spotlight-label { font-family:'Space Mono',monospace;font-size:12px;color:var(--accent-light);letter-spacing:.12em;text-transform:uppercase; }
+  .spotlight-name { font-family:'Space Mono',monospace;font-size:16px;font-weight:700;color:var(--fg); }
+  .spotlight-readonly-tag {
+    margin-left:auto;
+    font-family:'Space Mono',monospace;font-size:10px;color:var(--fg-dim);
+    background:var(--surface);border:1px solid var(--border);border-radius:6px;
+    padding:3px 8px;letter-spacing:.08em;text-transform:uppercase;
+  }
+  #spotlight-canvas-wrap { flex:1;position:relative;overflow:hidden;background:var(--canvas-bg); }
+  #spotlight-canvas { position:absolute;top:0;left:0;width:100%;height:100%; }
+
+  /* TIMER BADGE — bovenin tijdens normale modus */
+  .timer-badge {
+    display:none;align-items:center;gap:6px;
+    background:var(--surface2);border:1.5px solid var(--border);
+    border-radius:8px;padding:4px 10px;
+    font-family:'Space Mono',monospace;font-size:13px;font-weight:700;
+    color:var(--fg);
+  }
+  .timer-badge.visible { display:flex; }
+  .timer-badge.warning { border-color:var(--orange);color:var(--orange); }
+  .timer-badge.warning .timer-dot { background:var(--orange); }
+  .timer-dot { width:8px;height:8px;border-radius:50%;background:var(--accent);animation:pulse-timer 1s infinite; }
+  @keyframes pulse-timer { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
+
+  /* ASSIGNMENT TOAST */
+  .assignment-toast {
+    position:fixed; top:20px; left:50%; transform:translateX(-50%) translateY(-80px);
+    background:linear-gradient(135deg, var(--accent), var(--accent-light));
+    color:#fff; padding:12px 24px; border-radius:12px;
+    font-family:'DM Sans',sans-serif; font-size:15px; font-weight:700;
+    box-shadow:0 8px 32px rgba(124,106,247,0.5);
+    z-index:300; opacity:0;
+    transition:opacity .25s, transform .25s ease-out;
+    pointer-events:none;
+  }
+  .assignment-toast.visible { opacity:1; transform:translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<!-- JOIN -->
+<div id="join-screen">
+  <div class="join-logo">wis<span>bordje</span></div>
+  <div class="join-card">
+    <div><div class="join-label">Sessiecode</div><input class="join-input" id="input-code" maxlength="6" placeholder="ABC123" autocomplete="off" spellcheck="false"></div>
+    <div><div class="join-label">Jouw naam</div><input class="join-input naam" id="input-naam" maxlength="30" placeholder="Voornaam" autocomplete="off"></div>
+    <div class="join-error" id="join-error"></div>
+    <button class="join-btn" id="join-btn">Verbinden →</button>
+  </div>
+</div>
+
+<!-- BOARD -->
+<div id="board-screen">
+  <div class="toolbar">
+    <div class="status-dot"></div>
+    <div class="toolbar-name" id="toolbar-name">—</div>
+    <div class="timer-badge" id="timer-badge"><span class="timer-dot"></span><span id="timer-text">--:--</span></div>
+    <div class="tool-sep"></div>
+    <button class="tool-btn active" id="tool-pen" title="Pen">✏️</button>
+    <button class="tool-btn" id="tool-text" title="Tekst">T</button>
+    <button class="tool-btn" id="tool-line" title="Lijn">╱</button>
+    <button class="tool-btn" id="tool-eraser" title="Gum">⌫</button>
+    <div class="tool-sep"></div>
+    <button class="tool-btn instrument-btn" id="tool-ruler" title="Liniaal — sleep om te plaatsen, teken op de stippellijn om langs te tekenen">📏</button>
+    <button class="tool-btn instrument-btn" id="tool-compass" title="Passer — sleep middelpunt of straal-handvat, teken op de stippelcirkel voor een boog">⊙</button>
+    <div class="shapes-wrap" id="shapes-wrap">
+      <button class="shapes-trigger" id="shapes-trigger">▭<span class="caret">▾</span></button>
+      <div class="shapes-dropdown" id="shapes-dropdown">
+        <div class="shapes-section-label">Basis</div>
+        <div class="shapes-grid">
+          <button class="shape-item" data-shape="rect"><svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="4" width="16" height="10" rx="0.5"/></svg><span class="shape-label">Rechthoek</span></button>
+          <button class="shape-item" data-shape="square"><svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="14" height="14" rx="0.5"/></svg><span class="shape-label">Vierkant</span></button>
+          <button class="shape-item" data-shape="circle"><svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="9" r="7"/></svg><span class="shape-label">Cirkel</span></button>
+          <button class="shape-item" data-shape="ellipse"><svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><ellipse cx="9" cy="9" rx="8" ry="5"/></svg><span class="shape-label">Ellips</span></button>
+          <button class="shape-item" data-shape="tri-eq"><svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="9,1 17,17 1,17"/></svg><span class="shape-label">Gelijkz.</span></button>
+          <button class="shape-item" data-shape="tri-right-l"><svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="1,1 1,17 17,17"/></svg><span class="shape-label">R.h.links</span></button>
+          <button class="shape-item" data-shape="tri-right-r"><svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="17,1 1,17 17,17"/></svg><span class="shape-label">R.h.rechts</span></button>
+          <button class="shape-item" data-shape="arrow"><svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="1" y1="9" x2="14" y2="9"/><polyline points="9,4 14,9 9,14"/></svg><span class="shape-label">Pijl</span></button>
+          <button class="shape-item" data-shape="arrow-double"><svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="3" y1="9" x2="15" y2="9"/><polyline points="8,4 3,9 8,14"/><polyline points="10,4 15,9 10,14"/></svg><span class="shape-label">↔ Pijl</span></button>
+        </div>
+        <div class="shapes-divider"></div>
+        <div class="shapes-section-label">Geavanceerd</div>
+        <div class="shapes-grid">
+          <button class="shape-item" data-shape="tri-iso"><svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="9,1 16,17 2,17"/></svg><span class="shape-label">Gelijkb.</span></button>
+          <button class="shape-item" data-shape="semi-circle"><svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1,9 A8,8 0 0,1 17,9 Z"/><line x1="1" y1="9" x2="17" y2="9"/></svg><span class="shape-label">½ cirkel</span></button>
+          <button class="shape-item" data-shape="quarter-circle"><svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1,17 A16,16 0 0,1 17,1"/><line x1="1" y1="1" x2="1" y2="17"/><line x1="1" y1="1" x2="17" y2="1"/></svg><span class="shape-label">¼ cirkel</span></button>
+          <button class="shape-item" data-shape="hexagon"><svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="9,1 16,5 16,13 9,17 2,13 2,5"/></svg><span class="shape-label">Hexagon</span></button>
+          <button class="shape-item" data-shape="pentagon"><svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="9,1 17,7 14,16 4,16 1,7"/></svg><span class="shape-label">Pentagon</span></button>
+          <button class="shape-item" data-shape="parallelogram"><svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="4,3 17,3 14,15 1,15"/></svg><span class="shape-label">Parall.</span></button>
+        </div>
+        <div class="shapes-divider"></div>
+        <div class="shape-input-row"><label>N-hoek:</label><input type="number" id="ngon-input" min="3" max="20" value="6"><button class="shape-item" data-shape="ngon" style="width:auto;padding:0 10px;font-size:11px;font-family:'Space Mono',monospace;">Kies</button></div>
+        <div class="shape-input-row"><label>Sector:</label><input type="number" id="sector-num" min="1" max="99" value="3" style="width:36px;"><label>/</label><input type="number" id="sector-den" min="2" max="100" value="4" style="width:36px;"><button class="shape-item" data-shape="sector" style="width:auto;padding:0 10px;font-size:11px;font-family:'Space Mono',monospace;">Kies</button></div>
+      </div>
+    </div>
+    <div class="tool-sep"></div>
+    <button class="linestyle-btn active" data-style="solid"><svg viewBox="0 0 22 14" fill="none"><line x1="1" y1="7" x2="21" y2="7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+    <button class="linestyle-btn" data-style="dashed"><svg viewBox="0 0 22 14" fill="none"><line x1="1" y1="7" x2="21" y2="7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-dasharray="4 3"/></svg></button>
+    <button class="linestyle-btn" data-style="highlight"><svg viewBox="0 0 22 14" fill="none"><rect x="1" y="2" width="20" height="10" rx="3" fill="rgba(255,230,50,0.5)" stroke="rgba(255,210,0,0.8)" stroke-width="1"/></svg></button>
+    <div class="tool-sep"></div>
+    <div class="color-dot active" style="background:#ffffff" data-color="#ffffff"></div>
+    <div class="color-dot" style="background:#f56565" data-color="#f56565"></div>
+    <div class="color-dot" style="background:#f6ad55" data-color="#f6ad55"></div>
+    <div class="color-dot" style="background:#68d391" data-color="#68d391"></div>
+    <div class="color-dot" style="background:#63b3ed" data-color="#63b3ed"></div>
+    <div class="color-dot" style="background:#b794f4" data-color="#b794f4"></div>
+    <div class="tool-sep"></div>
+    <button class="size-btn active" data-size="3">S</button>
+    <button class="size-btn" data-size="6">M</button>
+    <button class="size-btn" data-size="12">L</button>
+    <div class="toolbar-right">
+      <button class="undo-btn" id="undo-btn" title="Ctrl+Z">↩</button>
+      <button class="hand-btn" id="hand-btn">✋ Vraag</button>
+      <button class="klaar-btn" id="klaar-btn">✓ Klaar</button>
+      <button class="clear-btn" id="clear-btn">Wis</button>
+    </div>
+  </div>
+
+  <div class="canvas-wrap" id="canvas-wrap">
+    <canvas id="board-canvas"></canvas>
+    <div id="text-input-overlay"><textarea id="text-textarea" placeholder="Typ hier…"></textarea></div>
+    <div class="zoom-indicator" id="zoom-indicator">100%</div>
+    <button class="fit-btn" id="fit-btn">⊡ Alles zichtbaar</button>
+
+    <!-- FREEZE OVERLAY -->
+    <div class="freeze-overlay" id="freeze-overlay">
+      <div class="freeze-icon" id="freeze-icon">🔒</div>
+      <div class="freeze-text" id="freeze-text">Bordje bevroren</div>
+      <div class="freeze-sub" id="freeze-sub">de docent heeft het bordje vergrendeld</div>
+    </div>
+  </div>
+</div>
+
+<!-- SPOTLIGHT — fullscreen view van docent's gekozen bordje -->
+<div id="spotlight-screen">
+  <div class="spotlight-bar">
+    <div class="spotlight-icon">🔦</div>
+    <div class="spotlight-label">Spotlight</div>
+    <div class="spotlight-name" id="spotlight-name">—</div>
+    <div class="spotlight-readonly-tag">alleen kijken</div>
+  </div>
+  <div id="spotlight-canvas-wrap">
+    <canvas id="spotlight-canvas"></canvas>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
+import { getDatabase, ref, set, update, get, onValue, off } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBF8sEpRPghG777M4H4kwHb8uzbxYkEDqA",
+  authDomain: "wisbordjes.firebaseapp.com",
+  databaseURL: "https://wisbordjes-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "wisbordjes", storageBucket: "wisbordjes.firebasestorage.app",
+  messagingSenderId: "306967459853", appId: "1:306967459853:web:bd0003d5a65d3840683d44"
+};
+const app = initializeApp(firebaseConfig);
+const db  = getDatabase(app);
+
+// ── STATE ──
+let sessieCode='', naam='', leerlingRef=null;
+let currentTool='pen', currentShape='rect', currentColor='#ffffff', currentSize=3, currentStyle='solid';
+let ngonSides=6, sectorNum=3, sectorDen=4;
+
+let strokes = [];        // alle eigen strokes
+let feedback = [];       // feedback van docent (read-only laag bovenop)
+let currentStroke=null, isDrawing=false;
+let syncTimeout=null, isKlaar=false, handRaised=false;
+let canvas, ctx;
+
+// ── INSTRUMENT STATE ──
+// Eén instrument tegelijk; null als geen instrument actief.
+// Coordinaten in WORLD-space (dus mee-pan/zoom met canvas).
+//   ruler: { type:'ruler', x1, y1, x2, y2 }   (twee uiteinden, lijn ertussen)
+//   compass: { type:'compass', cx, cy, px, py }   (middelpunt + handvatpunt op cirkelrand)
+let instrument = null;
+// Tijdens manipulatie:
+let instrumentDrag = null; // { handle:'mid'|'end1'|'end2'|'center'|'radius', startWorld, startInstrument }
+// Tijdens snap-tekenen langs een instrument:
+let snapDraw = null; // { mode:'ruler'|'compass-arc' }
+// Geanimeerde stippels:
+let dashOffset = 0;
+let dashAnimId = null;
+// Hit-radius in PIXELS (schermruimte) zodat zoom-onafhankelijk
+const HANDLE_HIT_PX = 18;
+const SNAP_HIT_PX = 14;
+
+// Viewport (eigen bordje)
+let panX=0, panY=0, zoom=1;
+const MIN_ZOOM=0.1, MAX_ZOOM=5;
+let isPanning=false, panStart={x:0,y:0}, panStartPan={x:0,y:0};
+let lastTouchDist=null, lastTouchMid=null;
+
+// Klassikale controls
+let isFrozen = false;
+let timerUpFreeze = false; // freeze veroorzaakt door timer (andere visuals)
+let spotlightTarget = null; // naam van leerling die in spotlight zit, of null
+
+// Spacebar voor pan: echte state ipv cursor-string-check (die brak doordat
+// hover over instrument-handvatten de cursor naar 'grab' zette)
+let isSpacePan = false;
+
+// Spotlight render state
+let spotCanvas, spotCtx;
+let spotPanX=0, spotPanY=0, spotZoom=1;
+let spotlightSubscribed = null; // welke leerling we momenteel volgen
+
+// Timer
+let timerEndsAt = null;
+let timerInterval = null;
+
+function worldToScreen(wx,wy){return{x:wx*zoom+panX,y:wy*zoom+panY};}
+function screenToWorld(sx,sy){return{x:(sx-panX)/zoom,y:(sy-panY)/zoom};}
+
+// Tekst
+const overlay=()=>document.getElementById('text-input-overlay');
+const textarea=()=>document.getElementById('text-textarea');
+let textStartWorld={x:0,y:0}, isDrawingTextBox=false;
+
+// ════════════════════════════════════════
+// JOIN
+// ════════════════════════════════════════
+document.getElementById('input-code').addEventListener('input',e=>{e.target.value=e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'');});
+document.getElementById('join-btn').addEventListener('click',join);
+document.getElementById('input-naam').addEventListener('keydown',e=>{if(e.key==='Enter')join();});
+document.getElementById('input-code').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('input-naam').focus();});
+
+// Pre-fill code uit URL ?code=ABC123
+const urlParams = new URLSearchParams(window.location.search);
+const urlCode = urlParams.get('code');
+if(urlCode) {
+  document.getElementById('input-code').value = urlCode.toUpperCase();
+  setTimeout(() => document.getElementById('input-naam').focus(), 50);
+}
+
+async function join() {
+  const code=document.getElementById('input-code').value.trim().toUpperCase();
+  const n=document.getElementById('input-naam').value.trim();
+  const err=document.getElementById('join-error');
+  if(code.length<4){err.textContent='Voer een geldige sessiecode in.';return;}
+  if(!n){err.textContent='Voer je naam in.';return;}
+  err.textContent='Verbinden…';
+  const snap=await get(ref(db,`sessies/${code}`));
+  if(!snap.exists()){err.textContent='Sessie niet gevonden.';return;}
+  sessieCode=code; naam=n;
+  leerlingRef=ref(db,`sessies/${code}/leerlingen/${naam}`);
+  await set(leerlingRef,{naam,strokes:[],lastSeen:Date.now(),klaar:false,hand:false});
+  startBoard();
+}
+
+// ════════════════════════════════════════
+// BOARD INIT
+// ════════════════════════════════════════
+function startBoard() {
+  document.getElementById('join-screen').style.display='none';
+  document.getElementById('board-screen').style.display='flex';
+  document.getElementById('toolbar-name').innerHTML=`<span>${escapeHTML(naam)}</span>`;
+  canvas=document.getElementById('board-canvas');
+  ctx=canvas.getContext('2d');
+  spotCanvas=document.getElementById('spotlight-canvas');
+  spotCtx=spotCanvas.getContext('2d');
+  resizeCanvas();
+  window.addEventListener('resize',()=>{resizeCanvas();resizeSpotCanvas();});
+  setupTools();
+  setupDrawing();
+  setupKeyboard();
+  document.getElementById('fit-btn').addEventListener('click',fitAll);
+  listenFeedback();
+  listenControl();
+}
+
+// ════════════════════════════════════════
+// LIVE LISTENERS
+// ════════════════════════════════════════
+function listenFeedback() {
+  onValue(ref(db,`sessies/${sessieCode}/leerlingen/${naam}/feedback`),snap=>{
+    feedback = snap.val() || [];
+    if(!Array.isArray(feedback)) feedback = Object.values(feedback);
+    redraw();
+  });
+}
+
+// Bijhouden welke assignment we al hebben verwerkt — zo voorkomen we
+// dat we bij elke control-update de strokes opnieuw resetten.
+let lastAssignmentAt = 0;
+let lastWipeAt = 0;
+
+function listenControl() {
+  // Klassikale controls: freeze, spotlight target, timer, assignment
+  onValue(ref(db,`sessies/${sessieCode}/control`),snap=>{
+    const c = snap.val() || {};
+    const wasFrozen = isFrozen;
+    isFrozen = !!c.freeze;
+    timerUpFreeze = !!c.timerUp;
+    spotlightTarget = c.spotlight || null;
+
+    // Timer
+    timerEndsAt = c.timerEndsAt || null;
+    updateTimerDisplay();
+
+    // Freeze overlay
+    updateFreezeOverlay();
+
+    // Assignment — een nieuwe gedeelde opgave van de docent
+    handleAssignment(c.assignment);
+
+    // Globale wis-actie van de docent
+    handleWipeAll(c.wipeAt);
+
+    // Spotlight: ben jij niet de spotlight-bron, dan zie je dat scherm
+    if(spotlightTarget && spotlightTarget !== naam) {
+      enterSpotlight(spotlightTarget);
+    } else {
+      exitSpotlight();
+    }
+
+    // Stop tekenen bij freeze of spotlight
+    if((isFrozen || (spotlightTarget && spotlightTarget !== naam)) && isDrawing) {
+      isDrawing = false;
+      currentStroke = null;
+      redraw();
+    }
+  });
+}
+
+function updateFreezeOverlay() {
+  const ov = document.getElementById('freeze-overlay');
+  const icon = document.getElementById('freeze-icon');
+  const text = document.getElementById('freeze-text');
+  const sub = document.getElementById('freeze-sub');
+  if(isFrozen) {
+    ov.classList.add('visible');
+    if(timerUpFreeze) {
+      ov.classList.add('timer-up');
+      icon.textContent = '⏰';
+      text.textContent = 'Tijd op!';
+      sub.textContent = 'de tijd is voorbij';
+    } else {
+      ov.classList.remove('timer-up');
+      icon.textContent = '🔒';
+      text.textContent = 'Bordje bevroren';
+      sub.textContent = 'de docent heeft het bordje vergrendeld';
+    }
+  } else {
+    ov.classList.remove('visible','timer-up');
+  }
+}
+
+// ════════════════════════════════════════
+// ASSIGNMENT — gedeeld bordje van docent
+// ════════════════════════════════════════
+//
+// Wanneer de docent zijn bordje deelt, ontvangen wij control.assignment =
+// { strokes: [...], sharedAt: timestamp }. We vervangen onze strokes met
+// een kopie waarin elke docent-streek `locked: true` is. De lock-flag
+// zorgt ervoor dat undo() en clear() ze laten staan.
+//
+// We gebruiken sharedAt als generatie-marker: alleen als die nieuwer is
+// dan onze lastAssignmentAt verwerken we de update. Anders zou elke
+// kleine wijziging in /control (bv. een freeze-toggle) onze strokes
+// onnodig resetten.
+function handleAssignment(assignment) {
+  if(!assignment || !assignment.sharedAt) return;
+  if(assignment.sharedAt <= lastAssignmentAt) return; // al verwerkt
+  lastAssignmentAt = assignment.sharedAt;
+
+  let docentStrokes = assignment.strokes || [];
+  if(!Array.isArray(docentStrokes)) docentStrokes = Object.values(docentStrokes);
+
+  // Sla af: maak een diepe kopie met locked-flag, vervang eigen strokes.
+  // We strippen ook eventuele oude locked-strokes uit eerdere assignments —
+  // bij overschrijving begint elke leerling weer schoon met alleen het
+  // nieuwe werkblad.
+  strokes = docentStrokes.map(s => ({ ...s, locked: true }));
+
+  // Cancel een eventuele lopende stroke
+  if(isDrawing) { isDrawing = false; currentStroke = null; snapDraw = null; }
+
+  // Reset viewport zodat de leerling het hele werkblad ziet
+  fitAll();
+  redraw();
+  syncSoon();
+
+  showAssignmentToast();
+}
+
+function showAssignmentToast() {
+  let toast = document.getElementById('assignment-toast');
+  if(!toast) {
+    toast = document.createElement('div');
+    toast.id = 'assignment-toast';
+    toast.className = 'assignment-toast';
+    document.body.appendChild(toast);
+  }
+  toast.textContent = '📝 Nieuwe opdracht van de docent';
+  toast.classList.add('visible');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => toast.classList.remove('visible'), 2500);
+}
+
+// ════════════════════════════════════════
+// WIS ALLES — globale wis vanuit docent
+// ════════════════════════════════════════
+function handleWipeAll(wipeAt) {
+  if(!wipeAt) return;
+  if(wipeAt <= lastWipeAt) return;
+  lastWipeAt = wipeAt;
+  // Reset strokes (ook locked) en feedback
+  strokes = [];
+  // Lokaal resetten van assignment-tracker zodat een nieuwe deel-actie
+  // straks niet wordt geblokkeerd door 'al verwerkt'
+  lastAssignmentAt = 0;
+  if(isDrawing) { isDrawing = false; currentStroke = null; snapDraw = null; }
+  redraw();
+  syncSoon();
+}
+
+// ════════════════════════════════════════
+// SPOTLIGHT (leerling zijde)
+// ════════════════════════════════════════
+// Cache van laatste spotlight-data, zodat we kunnen herrendere zodra het canvas geldig is
+let lastSpotData = { strokes: [], feedback: [] };
+
+function enterSpotlight(targetNaam) {
+  const screen = document.getElementById('spotlight-screen');
+  if(spotlightSubscribed === targetNaam) return; // al aangesloten
+  if(spotlightSubscribed) {
+    off(ref(db,`sessies/${sessieCode}/leerlingen/${spotlightSubscribed}`));
+  }
+  spotlightSubscribed = targetNaam;
+  lastSpotData = { strokes: [], feedback: [] };
+  document.getElementById('spotlight-name').textContent = targetNaam;
+  screen.classList.add('visible');
+
+  // Wacht tot de browser de layout heeft gedaan (display:flex toegepast).
+  // requestAnimationFrame is betrouwbaarder dan setTimeout omdat het echt
+  // wacht op een render-frame; we doen er twee om zeker te zijn dat het
+  // canvas zijn nieuwe afmetingen heeft.
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      resizeSpotCanvas();
+      // Eerste poging tot rendering met evt. eerder gecachte data
+      renderSpotlight(lastSpotData.strokes, lastSpotData.feedback);
+    });
+  });
+
+  // Live luisteren naar de target
+  onValue(ref(db,`sessies/${sessieCode}/leerlingen/${targetNaam}`),snap=>{
+    const data = snap.val();
+    if(!data) return;
+    let s = data.strokes || [];
+    if(!Array.isArray(s)) s = Object.values(s);
+    let fb = data.feedback || [];
+    if(!Array.isArray(fb)) fb = Object.values(fb);
+    lastSpotData = { strokes: s, feedback: fb };
+    renderSpotlight(s, fb);
+  });
+}
+
+function exitSpotlight() {
+  if(spotlightSubscribed) {
+    off(ref(db,`sessies/${sessieCode}/leerlingen/${spotlightSubscribed}`));
+    spotlightSubscribed = null;
+  }
+  lastSpotData = { strokes: [], feedback: [] };
+  document.getElementById('spotlight-screen').classList.remove('visible');
+}
+
+function resizeSpotCanvas() {
+  if(!spotCanvas) return;
+  const wrap = document.getElementById('spotlight-canvas-wrap');
+  if(!wrap || wrap.clientWidth === 0) return;
+  spotCanvas.width = wrap.clientWidth;
+  spotCanvas.height = wrap.clientHeight;
+  // Direct herrendere met laatst bekende data
+  renderSpotlight(lastSpotData.strokes, lastSpotData.feedback);
+}
+
+function renderSpotlight(s, fb) {
+  if(!spotCtx) return;
+  // Als canvas nog geen formaat heeft: probeer te resizen, en plan een re-render
+  if(spotCanvas.width === 0 || spotCanvas.height === 0) {
+    resizeSpotCanvas();
+    if(spotCanvas.width === 0 || spotCanvas.height === 0) {
+      // Canvas-wrap nog niet zichtbaar; probeer het volgend frame opnieuw
+      requestAnimationFrame(() => renderSpotlight(lastSpotData.strokes, lastSpotData.feedback));
+      return;
+    }
+  }
+  spotCtx.fillStyle = '#111116';
+  spotCtx.fillRect(0,0,spotCanvas.width,spotCanvas.height);
+  const all = [...s, ...fb];
+  if(!all.length) return;
+  const bb = getBoundingBox(all);
+  if(!bb) return;
+  const pad = 40;
+  const bbW = (bb.maxX - bb.minX) || 200;
+  const bbH = (bb.maxY - bb.minY) || 150;
+  const scale = Math.min((spotCanvas.width - pad*2)/bbW, (spotCanvas.height - pad*2)/bbH);
+  const offX = spotCanvas.width/2 - ((bb.minX+bb.maxX)/2)*scale;
+  const offY = spotCanvas.height/2 - ((bb.minY+bb.maxY)/2)*scale;
+  spotCtx.save();
+  spotCtx.translate(offX, offY);
+  spotCtx.scale(scale, scale);
+  s.forEach(st => drawStroke(st, spotCtx));
+  fb.forEach(st => drawStroke(st, spotCtx));
+  spotCtx.restore();
+}
+
+// ════════════════════════════════════════
+// TIMER (display only, leerling kant)
+// ════════════════════════════════════════
+function updateTimerDisplay() {
+  const badge = document.getElementById('timer-badge');
+  const txt = document.getElementById('timer-text');
+  if(timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+  if(!timerEndsAt) {
+    badge.classList.remove('visible','warning');
+    return;
+  }
+  badge.classList.add('visible');
+  const tick = () => {
+    const ms = timerEndsAt - Date.now();
+    if(ms <= 0) {
+      txt.textContent = '00:00';
+      badge.classList.add('warning');
+      clearInterval(timerInterval); timerInterval = null;
+      return;
+    }
+    const s = Math.ceil(ms/1000);
+    const m = Math.floor(s/60), r = s%60;
+    txt.textContent = `${String(m).padStart(2,'0')}:${String(r).padStart(2,'0')}`;
+    if(s <= 10) badge.classList.add('warning'); else badge.classList.remove('warning');
+  };
+  tick();
+  timerInterval = setInterval(tick, 250);
+}
+
+// ════════════════════════════════════════
+// TOOLS
+// ════════════════════════════════════════
+function setupTools() {
+  ['pen','text','line','eraser'].forEach(t=>{document.getElementById(`tool-${t}`).addEventListener('click',()=>setTool(t));});
+
+  // Instrument-knoppen: toggle systeem (één tegelijk)
+  document.getElementById('tool-ruler').addEventListener('click', () => setInstrument('ruler'));
+  document.getElementById('tool-compass').addEventListener('click', () => setInstrument('compass'));
+  const trigger=document.getElementById('shapes-trigger'),dropdown=document.getElementById('shapes-dropdown');
+  trigger.addEventListener('click',e=>{e.stopPropagation();dropdown.classList.toggle('open');});
+  document.addEventListener('click',()=>dropdown.classList.remove('open'));
+  dropdown.addEventListener('click',e=>e.stopPropagation());
+  document.querySelectorAll('.shape-item[data-shape]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const shape=btn.dataset.shape;
+      if(shape==='ngon'){ngonSides=Math.max(3,Math.min(20,parseInt(document.getElementById('ngon-input').value)||6));currentShape='ngon';}
+      else if(shape==='sector'){sectorNum=parseInt(document.getElementById('sector-num').value)||3;sectorDen=parseInt(document.getElementById('sector-den').value)||4;currentShape='sector';}
+      else currentShape=shape;
+      setTool('shape');dropdown.classList.remove('open');
+    });
+  });
+  document.querySelectorAll('.linestyle-btn').forEach(b=>{b.addEventListener('click',()=>{document.querySelectorAll('.linestyle-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');currentStyle=b.dataset.style;});});
+  document.querySelectorAll('.color-dot').forEach(d=>{d.addEventListener('click',()=>{document.querySelectorAll('.color-dot').forEach(x=>x.classList.remove('active'));d.classList.add('active');currentColor=d.dataset.color;if(currentTool==='eraser')setTool('pen');});});
+  document.querySelectorAll('.size-btn').forEach(b=>{b.addEventListener('click',()=>{document.querySelectorAll('.size-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');currentSize=parseInt(b.dataset.size);});});
+  document.getElementById('undo-btn').addEventListener('click',undo);
+  document.getElementById('clear-btn').addEventListener('click',()=>{
+    if(isInputBlocked())return;
+    // Behoud locked strokes (gedeelde docent-opdracht). Alleen eigen
+    // strokes verwijderen.
+    const before = strokes.length;
+    strokes = strokes.filter(s => s.locked);
+    if(strokes.length === before) return; // niets te wissen
+    redraw();
+    syncSoon();
+  });
+  document.getElementById('klaar-btn').addEventListener('click',()=>{
+    if(isInputBlocked())return;
+    isKlaar=!isKlaar;
+    document.getElementById('klaar-btn').classList.toggle('klaar',isKlaar);
+    document.getElementById('klaar-btn').textContent=isKlaar?'✓ Klaar!':'✓ Klaar';
+    syncStateNow();
+  });
+  document.getElementById('hand-btn').addEventListener('click',()=>{
+    if(isInputBlocked() && !handRaised) return; // mag wel hand zakken tijdens freeze
+    handRaised=!handRaised;
+    document.getElementById('hand-btn').classList.toggle('raised',handRaised);
+    document.getElementById('hand-btn').textContent=handRaised?'✋ Vraag!':'✋ Vraag';
+    syncStateNow();
+  });
+}
+
+function setTool(t) {
+  if(currentTool==='text')commitText();
+  currentTool=t;
+  ['pen','text','line','eraser'].forEach(id=>document.getElementById(`tool-${id}`)?.classList.toggle('active',id===t));
+  document.getElementById('shapes-trigger').classList.toggle('active',t==='shape');
+  canvas.style.cursor=t==='eraser'?'cell':t==='text'?'text':'crosshair';
+}
+
+// ════════════════════════════════════════
+// KEYBOARD
+// ════════════════════════════════════════
+function setupKeyboard() {
+  document.addEventListener('keydown',e=>{
+    if((e.ctrlKey||e.metaKey)&&e.key==='z'&&!e.shiftKey){e.preventDefault();undo();}
+    if(e.key==='Escape')commitText();
+    if(e.key===' ' && !isInputBlocked() && !isSpacePan) {
+      isSpacePan = true;
+      canvas.style.cursor='grab';
+    }
+  });
+  document.addEventListener('keyup',e=>{
+    if(e.key===' ') {
+      isSpacePan = false;
+      canvas.style.cursor=currentTool==='eraser'?'cell':currentTool==='text'?'text':'crosshair';
+    }
+  });
+}
+
+function undo() {
+  if(isInputBlocked())return;
+  if(!strokes.length)return;
+  // Sla locked strokes (van docent-werkblad) over: we mogen alleen onze
+  // eigen, niet-locked strokes terughalen.
+  const last = strokes[strokes.length - 1];
+  if(last.locked) return;
+  strokes.pop();redraw();syncSoon();
+}
+
+// ════════════════════════════════════════
+// TEKST
+// ════════════════════════════════════════
+function commitText() {
+  if(!overlay().classList.contains('visible'))return;
+  const text=textarea().value.trim();
+  if(text){
+    const bx=parseInt(overlay().style.left),by=parseInt(overlay().style.top);
+    const wp=screenToWorld(bx,by);
+    strokes.push({tool:'text',text,x:wp.x,y:wp.y,w:parseInt(overlay().style.width)/zoom,h:parseInt(overlay().style.height)/zoom,color:currentColor,size:currentSize*4,style:'solid'});
+    redraw();syncSoon();
+  }
+  overlay().classList.remove('visible');textarea().value='';
+}
+textarea().addEventListener('blur',()=>setTimeout(commitText,100));
+textarea().addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();commitText();}});
+
+// ════════════════════════════════════════
+// INSTRUMENTEN — Liniaal & Passer
+// ════════════════════════════════════════
+//
+// Design: ÉÉN instrument tegelijk, lokaal (niet gesynced), niet onderdeel
+// van strokes. De tools-knop in de toolbar fungeert als toggle. Het
+// instrument leeft in WORLD-coordinaten zodat het mee-pant en mee-zoomt
+// met de canvas.
+//
+// Hit-zone hierarchie bij pointerdown:
+//   1) Klik op een handvat (cirkel) → manipuleer instrument
+//   2) Klik op de stippel-rand (binnen SNAP_HIT_PX) → snap-tekenen langs
+//   3) Anders → normale teken/tekst/etc. logica
+// ════════════════════════════════════════
+
+function setInstrument(type) {
+  if(instrument && instrument.type === type) {
+    // Toggle: zelfde knop opnieuw → instrument weg
+    removeInstrument();
+    return;
+  }
+  // Plaats instrument in het midden van het zichtbare canvas (in world coords)
+  const cw = screenToWorld(canvas.width / 2, canvas.height / 2);
+  const sizeW = 200 / zoom; // ongeveer 200 schermpx breed/diameter
+  if(type === 'ruler') {
+    instrument = { type:'ruler', x1: cw.x - sizeW, y1: cw.y, x2: cw.x + sizeW, y2: cw.y };
+  } else if(type === 'compass') {
+    instrument = { type:'compass', cx: cw.x, cy: cw.y, px: cw.x + sizeW * 0.7, py: cw.y };
+  }
+  updateInstrumentButtons();
+  startDashAnim();
+  redraw();
+}
+
+function removeInstrument() {
+  instrument = null;
+  instrumentDrag = null;
+  snapDraw = null;
+  updateInstrumentButtons();
+  stopDashAnim();
+  redraw();
+}
+
+function updateInstrumentButtons() {
+  document.getElementById('tool-ruler').classList.toggle('active', instrument?.type === 'ruler');
+  document.getElementById('tool-compass').classList.toggle('active', instrument?.type === 'compass');
+}
+
+// Animatie van de stippels — alleen draaien als instrument zichtbaar is
+function startDashAnim() {
+  if(dashAnimId) return;
+  const tick = () => {
+    dashOffset = (dashOffset + 0.4) % 1000;
+    redraw();
+    dashAnimId = requestAnimationFrame(tick);
+  };
+  dashAnimId = requestAnimationFrame(tick);
+}
+function stopDashAnim() {
+  if(dashAnimId) { cancelAnimationFrame(dashAnimId); dashAnimId = null; }
+}
+
+// ── Geometrie helpers (alle in world-space) ──
+function dist(ax, ay, bx, by) { return Math.hypot(ax-bx, ay-by); }
+
+// Loodrecht voetpunt van P op lijn(A,B). Geeft ook t (0..1 binnen segment).
+function projectPointOnSegment(px, py, ax, ay, bx, by) {
+  const dx = bx-ax, dy = by-ay;
+  const lenSq = dx*dx + dy*dy;
+  if(lenSq < 1e-6) return { x:ax, y:ay, t:0, dist:dist(px,py,ax,ay) };
+  const t = ((px-ax)*dx + (py-ay)*dy) / lenSq;
+  const x = ax + t*dx, y = ay + t*dy;
+  return { x, y, t, dist:dist(px, py, x, y) };
+}
+
+// Loodrechte projectie op de oneindige lijn (niet beperkt tot segment).
+// Voor de liniaal willen we langs de héle stippelijn kunnen tekenen, niet
+// alleen tussen de eindpunten.
+function projectPointOnInfiniteLine(px, py, ax, ay, bx, by) {
+  const dx = bx-ax, dy = by-ay;
+  const lenSq = dx*dx + dy*dy;
+  if(lenSq < 1e-6) return { x:ax, y:ay, dist:dist(px,py,ax,ay) };
+  const t = ((px-ax)*dx + (py-ay)*dy) / lenSq;
+  const x = ax + t*dx, y = ay + t*dy;
+  return { x, y, dist:dist(px, py, x, y) };
+}
+
+// Projecteer punt op een cirkelrand: trek lijn van middelpunt naar punt,
+// schaal naar straal r.
+function projectPointOnCircle(px, py, cx, cy, r) {
+  const dx = px-cx, dy = py-cy;
+  const len = Math.hypot(dx, dy);
+  if(len < 1e-6) return { x:cx+r, y:cy, dist:Math.abs(r) };
+  const x = cx + dx/len * r, y = cy + dy/len * r;
+  return { x, y, dist: Math.abs(len - r) };
+}
+
+// ── Hit-testing (geeft handvat-naam terug, of null) ──
+// Werkt in screen-pixels zodat handvatten altijd even makkelijk te raken
+// zijn, ongeacht zoom.
+function hitTestInstrument(sx, sy) {
+  if(!instrument) return null;
+  if(instrument.type === 'ruler') {
+    const e1 = worldToScreen(instrument.x1, instrument.y1);
+    const e2 = worldToScreen(instrument.x2, instrument.y2);
+    if(dist(sx,sy,e1.x,e1.y) <= HANDLE_HIT_PX) return 'end1';
+    if(dist(sx,sy,e2.x,e2.y) <= HANDLE_HIT_PX) return 'end2';
+    // Middelpunt-greep: midden tussen e1 en e2
+    const mx = (e1.x+e2.x)/2, my = (e1.y+e2.y)/2;
+    if(dist(sx,sy,mx,my) <= HANDLE_HIT_PX) return 'mid';
+    return null;
+  }
+  if(instrument.type === 'compass') {
+    const c = worldToScreen(instrument.cx, instrument.cy);
+    const p = worldToScreen(instrument.px, instrument.py);
+    // Volgorde matters: als beide overlappen kies de radius-poot (meer voor de hand liggend)
+    if(dist(sx,sy,p.x,p.y) <= HANDLE_HIT_PX) return 'radius';
+    if(dist(sx,sy,c.x,c.y) <= HANDLE_HIT_PX) return 'center';
+    return null;
+  }
+  return null;
+}
+
+// Snap-test: klikt de pen op de stippel-rand?
+// Geeft een snap-mode terug ('ruler' / 'compass-arc') of null.
+function hitTestInstrumentSnap(sx, sy) {
+  if(!instrument) return null;
+  const wp = screenToWorld(sx, sy);
+  if(instrument.type === 'ruler') {
+    const proj = projectPointOnInfiniteLine(wp.x, wp.y, instrument.x1, instrument.y1, instrument.x2, instrument.y2);
+    // Project en bereken afstand in screen-px
+    const projScr = worldToScreen(proj.x, proj.y);
+    if(dist(sx, sy, projScr.x, projScr.y) <= SNAP_HIT_PX) return 'ruler';
+    return null;
+  }
+  if(instrument.type === 'compass') {
+    const r = dist(instrument.cx, instrument.cy, instrument.px, instrument.py);
+    const proj = projectPointOnCircle(wp.x, wp.y, instrument.cx, instrument.cy, r);
+    const projScr = worldToScreen(proj.x, proj.y);
+    if(dist(sx, sy, projScr.x, projScr.y) <= SNAP_HIT_PX) return 'compass-arc';
+    return null;
+  }
+  return null;
+}
+
+// Snap een wereldpunt naar de instrument-rand
+function snapToInstrument(wx, wy, mode) {
+  if(mode === 'ruler' && instrument?.type === 'ruler') {
+    return projectPointOnInfiniteLine(wx, wy, instrument.x1, instrument.y1, instrument.x2, instrument.y2);
+  }
+  if(mode === 'compass-arc' && instrument?.type === 'compass') {
+    const r = dist(instrument.cx, instrument.cy, instrument.px, instrument.py);
+    return projectPointOnCircle(wx, wy, instrument.cx, instrument.cy, r);
+  }
+  return { x:wx, y:wy };
+}
+
+// ── Manipulatie tijdens drag ──
+function applyInstrumentDrag(currentWorld) {
+  if(!instrumentDrag || !instrument) return;
+  const dx = currentWorld.x - instrumentDrag.startWorld.x;
+  const dy = currentWorld.y - instrumentDrag.startWorld.y;
+  const start = instrumentDrag.startInstrument;
+  const h = instrumentDrag.handle;
+
+  if(instrument.type === 'ruler') {
+    if(h === 'mid') {
+      // Hele lat verplaatsen
+      instrument.x1 = start.x1 + dx; instrument.y1 = start.y1 + dy;
+      instrument.x2 = start.x2 + dx; instrument.y2 = start.y2 + dy;
+    } else if(h === 'end1') {
+      // Eind 1 volgt cursor; eind 2 blijft pivot. Roteert + verlengt.
+      instrument.x1 = currentWorld.x; instrument.y1 = currentWorld.y;
+    } else if(h === 'end2') {
+      instrument.x2 = currentWorld.x; instrument.y2 = currentWorld.y;
+    }
+  } else if(instrument.type === 'compass') {
+    if(h === 'center') {
+      // Verplaats hele cirkel: middelpunt én handvat verschuiven mee
+      instrument.cx = start.cx + dx; instrument.cy = start.cy + dy;
+      instrument.px = start.px + dx; instrument.py = start.py + dy;
+    } else if(h === 'radius') {
+      // Handvat volgt cursor: straal en hoek passen aan, middelpunt blijft
+      instrument.px = currentWorld.x; instrument.py = currentWorld.y;
+    }
+  }
+}
+
+// ── Render het instrument bovenop de strokes ──
+function drawInstrument(c) {
+  if(!instrument) return;
+  c.save();
+  // We werken in world-space (caller heeft al getranslate/scale gedaan)
+  // Maar we willen lijndikte / handvat-grootte in SCHERM-pixels constant houden.
+  // Truc: we tekenen rand in world-space met `lineWidth/zoom` zodat het op het
+  // scherm ~1.5 px blijft.
+  const dashWorld = 8 / zoom; // dashes in world-space, geeft consistente streep-grootte
+  const gapWorld = 5 / zoom;
+
+  c.lineCap = 'round';
+  c.lineJoin = 'round';
+
+  if(instrument.type === 'ruler') {
+    // De stippellijn
+    c.strokeStyle = 'rgba(168, 157, 247, 0.85)'; // accent-light
+    c.lineWidth = 1.5 / zoom;
+    c.setLineDash([dashWorld, gapWorld]);
+    c.lineDashOffset = -dashOffset / zoom;
+    c.beginPath();
+    c.moveTo(instrument.x1, instrument.y1);
+    c.lineTo(instrument.x2, instrument.y2);
+    c.stroke();
+    c.setLineDash([]);
+    c.lineDashOffset = 0;
+
+    // Handvatten op uiteinden (oranje)
+    const r = 7 / zoom; // 7 pixels straal
+    c.fillStyle = 'rgba(246, 173, 85, 0.9)';
+    c.strokeStyle = '#fff';
+    c.lineWidth = 1.5 / zoom;
+    [{x:instrument.x1, y:instrument.y1}, {x:instrument.x2, y:instrument.y2}].forEach(p => {
+      c.beginPath(); c.arc(p.x, p.y, r, 0, Math.PI*2); c.fill(); c.stroke();
+    });
+
+    // Middelpunt-greep (paars)
+    const mx = (instrument.x1+instrument.x2)/2, my = (instrument.y1+instrument.y2)/2;
+    c.fillStyle = 'rgba(124, 106, 247, 0.95)';
+    c.beginPath(); c.arc(mx, my, r * 1.05, 0, Math.PI*2); c.fill(); c.stroke();
+  }
+  else if(instrument.type === 'compass') {
+    const r = dist(instrument.cx, instrument.cy, instrument.px, instrument.py);
+    if(r > 0.5) {
+      c.strokeStyle = 'rgba(168, 157, 247, 0.85)';
+      c.lineWidth = 1.5 / zoom;
+      c.setLineDash([dashWorld, gapWorld]);
+      c.lineDashOffset = -dashOffset / zoom;
+      c.beginPath();
+      c.arc(instrument.cx, instrument.cy, r, 0, Math.PI*2);
+      c.stroke();
+      c.setLineDash([]);
+      c.lineDashOffset = 0;
+      // Lichte streep van middelpunt naar handvat (visuele hint dat dit de straal is)
+      c.strokeStyle = 'rgba(168, 157, 247, 0.3)';
+      c.lineWidth = 1 / zoom;
+      c.setLineDash([3 / zoom, 3 / zoom]);
+      c.beginPath();
+      c.moveTo(instrument.cx, instrument.cy);
+      c.lineTo(instrument.px, instrument.py);
+      c.stroke();
+      c.setLineDash([]);
+    }
+
+    const handleR = 7 / zoom;
+    c.lineWidth = 1.5 / zoom;
+    c.strokeStyle = '#fff';
+
+    // Middelpunt (paars)
+    c.fillStyle = 'rgba(124, 106, 247, 0.95)';
+    c.beginPath(); c.arc(instrument.cx, instrument.cy, handleR * 1.05, 0, Math.PI*2); c.fill(); c.stroke();
+
+    // Radius-handvat (oranje)
+    c.fillStyle = 'rgba(246, 173, 85, 0.9)';
+    c.beginPath(); c.arc(instrument.px, instrument.py, handleR, 0, Math.PI*2); c.fill(); c.stroke();
+  }
+  c.restore();
+}
+
+// ════════════════════════════════════════
+// DRAWING — pointer events
+// ════════════════════════════════════════
+function setupDrawing() {
+  canvas.addEventListener('pointerdown',onDown);
+  canvas.addEventListener('pointermove',onMove);
+  canvas.addEventListener('pointerup',onUp);
+  canvas.addEventListener('pointerleave',onUp);
+  canvas.addEventListener('wheel',onWheel,{passive:false});
+  canvas.addEventListener('touchstart',onTouchStart,{passive:false});
+  canvas.addEventListener('touchmove',onTouchMove,{passive:false});
+  canvas.addEventListener('touchend',onTouchEnd,{passive:false});
+}
+
+function isInputBlocked() {
+  // tekenen geblokkeerd bij freeze of als jij niet de spotlight-bron bent terwijl spotlight actief is
+  return isFrozen || (spotlightTarget && spotlightTarget !== naam);
+}
+
+function getScreenPos(e){const r=canvas.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top};}
+function getWorldPos(e){const s=getScreenPos(e);return screenToWorld(s.x,s.y);}
+
+function onDown(e) {
+  e.preventDefault();
+  if(isInputBlocked())return;
+  const sp=getScreenPos(e);
+
+  // ── Middle-mouse en alt+klik = altijd pannen ──
+  if(e.button===1||(e.button===0&&e.altKey)){isPanning=true;panStart={x:sp.x,y:sp.y};panStartPan={x:panX,y:panY};canvas.style.cursor='grabbing';return;}
+
+  // ── Instrument hit-testing — vóór de spacebar-pan check, zodat een
+  //    klik op een handvat altijd wint, ongeacht wat de cursor toont ──
+  if(instrument && !isSpacePan) {
+    // 1) Handvatten?
+    const handle = hitTestInstrument(sp.x, sp.y);
+    if(handle) {
+      const wp = getWorldPos(e);
+      instrumentDrag = {
+        handle,
+        startWorld: wp,
+        startInstrument: { ...instrument }
+      };
+      return;
+    }
+    // 2) Snap-tekenen langs de stippelrand?
+    if(currentTool === 'pen') {
+      const snapMode = hitTestInstrumentSnap(sp.x, sp.y);
+      if(snapMode) {
+        const wp = getWorldPos(e);
+        const snapped = snapToInstrument(wp.x, wp.y, snapMode);
+        snapDraw = { mode: snapMode };
+        isDrawing = true;
+        currentStroke = {
+          tool:'pen', color:currentColor, size:currentSize, style:currentStyle,
+          points: [{ x: snapped.x, y: snapped.y }]
+        };
+        return;
+      }
+    }
+  }
+
+  // ── Spacebar-pan check (na instrument-checks) ──
+  if(isSpacePan){isPanning=true;panStart={x:sp.x,y:sp.y};panStartPan={x:panX,y:panY};canvas.style.cursor='grabbing';return;}
+
+  // ── Normale teken-flow ──
+  isDrawing=true;
+  const wp=getWorldPos(e);
+  if(currentTool==='text'){commitText();textStartWorld=wp;overlay().style.left=sp.x+'px';overlay().style.top=sp.y+'px';overlay().style.width='2px';overlay().style.height='2px';isDrawingTextBox=true;return;}
+  if(currentTool==='pen'||currentTool==='eraser'){
+    const col=currentTool==='eraser'?'#ERASER':currentColor;
+    const sz=currentTool==='eraser'?currentSize*4:currentSize;
+    currentStroke={tool:currentTool,color:col,size:sz,style:currentStyle,points:[wp]};
+  } else {
+    currentStroke={tool:currentTool==='line'?'line':'shape',shape:currentShape,color:currentColor,size:currentSize,style:currentStyle,ngonSides,sectorNum,sectorDen,x1:wp.x,y1:wp.y,x2:wp.x,y2:wp.y};
+  }
+}
+
+function onMove(e) {
+  e.preventDefault();
+  if(isPanning){const sp=getScreenPos(e);panX=panStartPan.x+(sp.x-panStart.x);panY=panStartPan.y+(sp.y-panStart.y);redraw();return;}
+
+  // ── Instrument-manipulatie heeft voorrang ──
+  if(instrumentDrag) {
+    const wp = getWorldPos(e);
+    applyInstrumentDrag(wp);
+    redraw();
+    return;
+  }
+
+  // Hover-cursor over instrument-handvatten (alleen als we niet aan het tekenen zijn)
+  if(!isDrawing && instrument) {
+    const sp = getScreenPos(e);
+    const handle = hitTestInstrument(sp.x, sp.y);
+    if(handle) {
+      canvas.style.cursor = 'grab';
+    } else {
+      // herstel naar tool-cursor
+      const c = currentTool==='eraser'?'cell':currentTool==='text'?'text':'crosshair';
+      if(canvas.style.cursor !== c) canvas.style.cursor = c;
+    }
+  }
+
+  if(!isDrawing)return;
+  const sp=getScreenPos(e),wp=getWorldPos(e);
+
+  // ── Snap-tekenen langs instrument ──
+  if(snapDraw && currentStroke) {
+    const snapped = snapToInstrument(wp.x, wp.y, snapDraw.mode);
+    currentStroke.points.push({ x: snapped.x, y: snapped.y });
+    redraw();
+    return;
+  }
+
+  if(currentTool==='text'&&isDrawingTextBox){
+    const tsw=worldToScreen(textStartWorld.x,textStartWorld.y);
+    overlay().style.left=Math.min(sp.x,tsw.x)+'px';overlay().style.top=Math.min(sp.y,tsw.y)+'px';
+    overlay().style.width=Math.abs(sp.x-tsw.x)+'px';overlay().style.height=Math.abs(sp.y-tsw.y)+'px';return;
+  }
+  if(currentTool==='pen'||currentTool==='eraser'){
+    currentStroke.points.push(wp);
+    redraw();
+  } else {
+    currentStroke.x2=wp.x;currentStroke.y2=wp.y;
+    redraw();
+  }
+}
+
+function onUp(e) {
+  if(isPanning){isPanning=false;canvas.style.cursor=currentTool==='eraser'?'cell':currentTool==='text'?'text':'crosshair';return;}
+
+  // ── Instrument-manipulatie afronden ──
+  if(instrumentDrag) { instrumentDrag = null; return; }
+
+  if(!isDrawing)return;isDrawing=false;
+
+  // ── Snap-tekenstreek afronden: gewoon opslaan zoals een normale pen-stroke ──
+  if(snapDraw && currentStroke) {
+    if(currentStroke.points.length >= 2) {
+      strokes.push(currentStroke);
+      syncSoon();
+    }
+    snapDraw = null;
+    currentStroke = null;
+    redraw();
+    return;
+  }
+
+  if(currentTool==='text'&&isDrawingTextBox){
+    const sp=getScreenPos(e);const tsw=worldToScreen(textStartWorld.x,textStartWorld.y);
+    const bw=Math.max(Math.abs(sp.x-tsw.x),60),bh=Math.max(Math.abs(sp.y-tsw.y),30);
+    overlay().style.left=Math.min(sp.x,tsw.x)+'px';overlay().style.top=Math.min(sp.y,tsw.y)+'px';
+    overlay().style.width=bw+'px';overlay().style.height=bh+'px';
+    textarea().style.fontSize=(currentSize*4)+'px';textarea().style.color=currentColor;textarea().value='';
+    overlay().classList.add('visible');isDrawingTextBox=false;setTimeout(()=>textarea().focus(),50);return;
+  }
+  if(currentStroke){strokes.push(currentStroke);currentStroke=null;syncSoon();}
+}
+
+function onWheel(e){e.preventDefault();const sp=getScreenPos(e);const factor=e.deltaY<0?1.1:0.9;const nz=Math.max(MIN_ZOOM,Math.min(MAX_ZOOM,zoom*factor));panX=sp.x-(sp.x-panX)*(nz/zoom);panY=sp.y-(sp.y-panY)*(nz/zoom);zoom=nz;updateZoomIndicator();redraw();}
+function onTouchStart(e){e.preventDefault();if(e.touches.length===2){lastTouchDist=getTouchDist(e);lastTouchMid=getTouchMid(e);isPanning=false;isDrawing=false;}}
+function onTouchMove(e){e.preventDefault();if(e.touches.length===2){const dist=getTouchDist(e),mid=getTouchMid(e);if(lastTouchDist){const factor=dist/lastTouchDist,nz=Math.max(MIN_ZOOM,Math.min(MAX_ZOOM,zoom*factor));panX=mid.x-(mid.x-panX)*(nz/zoom)+(mid.x-lastTouchMid.x);panY=mid.y-(mid.y-panY)*(nz/zoom)+(mid.y-lastTouchMid.y);zoom=nz;updateZoomIndicator();redraw();}lastTouchDist=dist;lastTouchMid=mid;}}
+function onTouchEnd(e){lastTouchDist=null;lastTouchMid=null;}
+function getTouchDist(e){const t=e.touches;return Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);}
+function getTouchMid(e){const t=e.touches;return{x:(t[0].clientX+t[1].clientX)/2,y:(t[0].clientY+t[1].clientY)/2};}
+function updateZoomIndicator(){document.getElementById('zoom-indicator').textContent=Math.round(zoom*100)+'%';}
+
+// ════════════════════════════════════════
+// FIT ALL
+// ════════════════════════════════════════
+function fitAll(){
+  if(!strokes.length){panX=0;panY=0;zoom=1;updateZoomIndicator();redraw();return;}
+  const bb=getBoundingBox(strokes);if(!bb)return;
+  const pad=60;const scaleX=(canvas.width-pad*2)/((bb.maxX-bb.minX)||1);const scaleY=(canvas.height-pad*2)/((bb.maxY-bb.minY)||1);
+  zoom=Math.max(MIN_ZOOM,Math.min(MAX_ZOOM,Math.min(scaleX,scaleY)));
+  panX=canvas.width/2-((bb.minX+bb.maxX)/2)*zoom;panY=canvas.height/2-((bb.minY+bb.maxY)/2)*zoom;
+  updateZoomIndicator();redraw();
+}
+
+function getBoundingBox(strokes){
+  let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+  for(const s of strokes){const pts=getStrokePoints(s);for(const p of pts){if(p.x<minX)minX=p.x;if(p.y<minY)minY=p.y;if(p.x>maxX)maxX=p.x;if(p.y>maxY)maxY=p.y;}}
+  return minX===Infinity?null:{minX,minY,maxX,maxY};
+}
+function getStrokePoints(s){if(s.tool==='pen'||s.tool==='eraser')return s.points||[];if(s.tool==='text')return[{x:s.x,y:s.y},{x:s.x+(s.w||100),y:s.y+(s.h||30)}];return[{x:s.x1,y:s.y1},{x:s.x2,y:s.y2}];}
+
+function resizeCanvas(){const wrap=canvas.parentElement;canvas.width=wrap.clientWidth;canvas.height=wrap.clientHeight;redraw();}
+
+// ════════════════════════════════════════
+// RENDER (eigen bordje)
+// ════════════════════════════════════════
+function redraw() {
+  if(!ctx) return;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle='#111116';ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.save();ctx.translate(panX,panY);ctx.scale(zoom,zoom);
+  strokes.forEach(s=>drawStroke(s,ctx));
+  feedback.forEach(s=>drawStroke(s,ctx));
+  // Live de currentStroke meetekenen — dit is essentieel: zonder dit veegt
+  // de dash-animatie van het instrument je halve streep weg vlak voordat
+  // hij is afgerond. Door hem in redraw zelf te tekenen is hij altijd
+  // onderdeel van de officiële render-pijplijn.
+  if(currentStroke) drawStroke(currentStroke, ctx);
+  // Instrument bovenop (handvatten/stippels altijd zichtbaar)
+  drawInstrument(ctx);
+  ctx.restore();
+}
+
+function applyLineStyle(c,style,size){if(style==='dashed')c.setLineDash([size*3,size*2]);else c.setLineDash([]);if(style==='highlight'){c.globalAlpha=0.35;c.lineWidth=size*5;}}
+
+function drawStroke(s,c){
+  c.save();const col=s.color==='#ERASER'?'#111116':(s.color||'#fff');
+  c.strokeStyle=col;c.fillStyle=col;c.lineWidth=s.size||3;c.lineCap='round';c.lineJoin='round';
+  applyLineStyle(c,s.style||'solid',s.size||3);
+  if(s.tool==='pen'||s.tool==='eraser'){if(!s.points?.length){c.restore();return;}c.beginPath();c.moveTo(s.points[0].x,s.points[0].y);for(let i=1;i<s.points.length;i++)c.lineTo(s.points[i].x,s.points[i].y);c.stroke();}
+  else if(s.tool==='line'){c.beginPath();c.moveTo(s.x1,s.y1);c.lineTo(s.x2,s.y2);c.stroke();}
+  else if(s.tool==='text'){c.setLineDash([]);c.globalAlpha=1;c.font=`${s.size}px "Space Mono",monospace`;c.fillStyle=col;c.textBaseline='top';(s.text||'').split('\n').forEach((line,i)=>{c.fillText(line,s.x+4,s.y+4+i*s.size*1.4);});}
+  else if(s.tool==='shape')drawShape(s,c);
+  c.restore();
+}
+
+function drawShape(s,c){const x1=s.x1,y1=s.y1,x2=s.x2,y2=s.y2,w=x2-x1,h=y2-y1,cx=(x1+x2)/2,cy=(y1+y2)/2,rx=Math.abs(w)/2,ry=Math.abs(h)/2;c.beginPath();switch(s.shape){case 'rect':c.strokeRect(x1,y1,w,h);break;case 'square':{const side=Math.min(Math.abs(w),Math.abs(h))*Math.sign(w);c.strokeRect(x1,y1,side,side*Math.sign(h)/Math.sign(w||1));break;}case 'circle':c.arc(cx,cy,Math.max(rx,ry),0,Math.PI*2);c.stroke();break;case 'ellipse':c.ellipse(cx,cy,rx||1,ry||1,0,0,Math.PI*2);c.stroke();break;case 'tri-eq':c.moveTo((x1+x2)/2,y1);c.lineTo(x2,y2);c.lineTo(x1,y2);c.closePath();c.stroke();break;case 'tri-iso':c.moveTo(cx,y1);c.lineTo(x2,y2);c.lineTo(x1,y2);c.closePath();c.stroke();break;case 'tri-right-l':c.moveTo(x1,y1);c.lineTo(x1,y2);c.lineTo(x2,y2);c.closePath();c.stroke();break;case 'tri-right-r':c.moveTo(x2,y1);c.lineTo(x1,y2);c.lineTo(x2,y2);c.closePath();c.stroke();break;case 'semi-circle':c.arc(cx,y2,rx,Math.PI,0);c.closePath();c.stroke();break;case 'quarter-circle':c.arc(x1,y2,Math.max(Math.abs(w),Math.abs(h)),-Math.PI/2,0);c.lineTo(x1,y2);c.closePath();c.stroke();break;case 'arrow':{const a=Math.atan2(y2-y1,x2-x1),hl=Math.min(20,Math.hypot(w,h)*0.3);c.moveTo(x1,y1);c.lineTo(x2,y2);c.stroke();c.beginPath();c.moveTo(x2,y2);c.lineTo(x2-hl*Math.cos(a-0.4),y2-hl*Math.sin(a-0.4));c.lineTo(x2-hl*Math.cos(a+0.4),y2-hl*Math.sin(a+0.4));c.closePath();c.fill();break;}case 'arrow-double':{const a=Math.atan2(y2-y1,x2-x1),hl=Math.min(20,Math.hypot(w,h)*0.3);c.moveTo(x1,y1);c.lineTo(x2,y2);c.stroke();c.beginPath();c.moveTo(x2,y2);c.lineTo(x2-hl*Math.cos(a-0.4),y2-hl*Math.sin(a-0.4));c.lineTo(x2-hl*Math.cos(a+0.4),y2-hl*Math.sin(a+0.4));c.closePath();c.fill();c.beginPath();c.moveTo(x1,y1);c.lineTo(x1+hl*Math.cos(a-0.4),y1+hl*Math.sin(a-0.4));c.lineTo(x1+hl*Math.cos(a+0.4),y1+hl*Math.sin(a+0.4));c.closePath();c.fill();break;}case 'hexagon':case 'pentagon':case 'ngon':{const sides=s.shape==='hexagon'?6:s.shape==='pentagon'?5:(s.ngonSides||6),r=Math.max(rx,ry);for(let i=0;i<sides;i++){const a=(i/sides)*Math.PI*2-Math.PI/2;i===0?c.moveTo(cx+r*Math.cos(a),cy+r*Math.sin(a)):c.lineTo(cx+r*Math.cos(a),cy+r*Math.sin(a));}c.closePath();c.stroke();break;}case 'parallelogram':{const off=Math.abs(w)*0.2;c.moveTo(x1+off,y1);c.lineTo(x2,y1);c.lineTo(x2-off,y2);c.lineTo(x1,y2);c.closePath();c.stroke();break;}case 'sector':{const num=s.sectorNum||3,den=s.sectorDen||4,end=(num/den)*Math.PI*2-Math.PI/2;c.moveTo(cx,cy);c.arc(cx,cy,Math.max(rx,ry),-Math.PI/2,end);c.closePath();c.stroke();break;}}}
+
+// ════════════════════════════════════════
+// SYNC (debounced voor strokes, instant voor state)
+// ════════════════════════════════════════
+function syncSoon() {
+  if(!leerlingRef)return;
+  clearTimeout(syncTimeout);
+  syncTimeout=setTimeout(()=>{
+    const bb=getBoundingBox(strokes);
+    update(leerlingRef, {
+      naam,
+      lastSeen: Date.now(),
+      klaar: isKlaar,
+      hand: handRaised,
+      strokes: strokes.slice(-300),
+      bbox: bb || null
+    });
+  },200);
+}
+
+function syncStateNow() {
+  if(!leerlingRef)return;
+  update(leerlingRef, { naam, lastSeen: Date.now(), klaar: isKlaar, hand: handRaised });
+}
+
+function escapeHTML(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+</script>
+</body>
+</html>

@@ -1,0 +1,65 @@
+{
+  "rules": {
+    // Sessies zitten allemaal onder /sessies. Top-level alles dichtgooien
+    // behalve dit subnode.
+    ".read": false,
+    ".write": false,
+
+    "sessies": {
+      // Geen .read of .write hier — clients moeten een specifieke
+      // sessiecode opvragen, niet de hele lijst.
+
+      "$code": {
+        // Sessiecode moet 6 alfanumerieke tekens zijn (zoals de tool genereert).
+        // Dit voorkomt dat iemand met willekeurige paden zit te rommelen.
+        ".validate": "$code.matches(/^[A-Z0-9]{6}$/)",
+
+        // Iedereen die de code kent kan lezen — dat is hoe leerlingen
+        // de sessie joinen.
+        ".read": true,
+
+        // De control-tak (freeze, spotlight, timer, assignment, wipeAt)
+        // hoort alleen door de docent geschreven te worden. We hebben geen
+        // auth, dus we kunnen niet hardgaranderen "alleen docent". Wel
+        // beperken we de structuur zodat onbedoelde rotzooi niet kan.
+        "control": {
+          ".write": true,
+          ".validate": "newData.hasChildren() == false || newData.hasChildren(['freeze']) || newData.hasChildren(['spotlight']) || newData.hasChildren(['timerEndsAt']) || newData.hasChildren(['timerFreezeOnEnd']) || newData.hasChildren(['timerUp']) || newData.hasChildren(['assignment']) || newData.hasChildren(['wipeAt'])",
+
+          "freeze":           { ".validate": "newData.isBoolean()" },
+          "spotlight":        { ".validate": "newData.isString() || newData.val() == null" },
+          "timerEndsAt":      { ".validate": "newData.isNumber() || newData.val() == null" },
+          "timerFreezeOnEnd": { ".validate": "newData.isBoolean() || newData.val() == null" },
+          "timerUp":          { ".validate": "newData.isBoolean() || newData.val() == null" },
+          "wipeAt":           { ".validate": "newData.isNumber() || newData.val() == null" },
+
+          "assignment": {
+            // strokes is een array of object van strokes; sharedAt is timestamp
+            "strokes":  { ".validate": "newData.exists()" },
+            "sharedAt": { ".validate": "newData.isNumber()" }
+          }
+        },
+
+        // Leerling-data — elke leerling schrijft naar zijn eigen naam-pad.
+        // De naam wordt door de leerling zelf gekozen in de UI, dus geen
+        // strikte regel daarop. Wel limiteren we wat er onder een leerling
+        // kan staan.
+        "leerlingen": {
+          ".write": true,
+          "$naam": {
+            // Naam mag geen verboden karakters bevatten (Firebase blokkeert
+            // sowieso . $ # [ ] / maar we zijn iets strenger):
+            ".validate": "$naam.length > 0 && $naam.length < 50",
+
+            "strokes":  { ".validate": "newData.exists() || newData.val() == null" },
+            "feedback": { ".validate": "newData.isString() || newData.val() == null" },
+            "bbox":     { ".validate": "newData.hasChildren(['x','y','w','h']) || newData.val() == null" },
+            "klaar":    { ".validate": "newData.isBoolean() || newData.val() == null" },
+            "hand":     { ".validate": "newData.isBoolean() || newData.val() == null" },
+            "lastSeen": { ".validate": "newData.isNumber()" }
+          }
+        }
+      }
+    }
+  }
+}

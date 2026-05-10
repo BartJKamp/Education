@@ -1,0 +1,1854 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wisbordje — Docent</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@400;500;700&display=swap');
+  :root {
+    --bg:#0a0a0f; --surface:#13131a; --surface2:#1c1c26; --surface3:#22222e;
+    --border:#2a2a3a; --border2:#1e1e2e;
+    --fg:#f0f0f8; --fg-dim:#5a5a78; --fg-faint:#333348;
+    --accent:#7c6af7; --accent-light:#a89df7;
+    --green:#48bb78; --orange:#f6ad55; --red:#f56565; --blue:#3366ff;
+    --canvas-bg:#111116; --feedback:#f6ad55;
+    --right-w:260px;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--bg); color:var(--fg); font-family:'DM Sans',sans-serif; height:100vh; display:flex; flex-direction:column; overflow:hidden; }
+
+  /* ════════════════════════════════════════
+     SETUP SCREEN
+  ════════════════════════════════════════ */
+  #setup-screen { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:28px; padding:24px; }
+  .logo { font-family:'Space Mono',monospace; font-size:clamp(24px,5vw,40px); font-weight:700; }
+  .logo span { color:var(--accent-light); }
+  .logo-sub { font-family:'Space Mono',monospace; font-size:12px; color:var(--fg-dim); letter-spacing:.15em; text-transform:uppercase; margin-top:4px; text-align:center; }
+  .setup-card { background:var(--surface); border:1.5px solid var(--border); border-radius:16px; padding:36px 44px; width:100%; max-width:500px; display:flex; flex-direction:column; gap:20px; align-items:center; }
+  .setup-top { display:flex; gap:24px; align-items:center; width:100%; }
+  .code-block { flex:1; display:flex; flex-direction:column; gap:8px; }
+  .code-display { font-family:'Space Mono',monospace; font-size:clamp(32px,7vw,52px); font-weight:700; letter-spacing:.18em; color:var(--accent-light); background:var(--bg); border:1.5px solid var(--border); border-radius:12px; padding:14px 20px; text-align:center; cursor:pointer; transition:border-color .15s; user-select:all; }
+  .code-display:hover { border-color:var(--accent); }
+  .code-hint { font-size:11px; color:var(--fg-dim); font-family:'Space Mono',monospace; text-align:center; }
+  #qr-canvas-setup { border-radius:10px; background:#fff; padding:6px; flex-shrink:0; }
+  .start-btn { width:100%; padding:16px; background:var(--accent); border:none; border-radius:10px; color:#fff; font-family:'DM Sans',sans-serif; font-size:16px; font-weight:700; cursor:pointer; transition:background .15s,transform .1s; }
+  .start-btn:hover { background:var(--accent-light); }
+  .start-btn:active { transform:scale(.97); }
+  .new-code-btn { background:transparent; border:none; color:var(--fg-dim); font-family:'Space Mono',monospace; font-size:11px; letter-spacing:.08em; cursor:pointer; text-decoration:underline; text-underline-offset:3px; }
+  .new-code-btn:hover { color:var(--fg); }
+
+  /* ════════════════════════════════════════
+     DASHBOARD — 2-KOLOM LAYOUT
+  ════════════════════════════════════════ */
+  #dashboard { display:none; height:100vh; flex-direction:column; overflow:hidden; }
+
+  .dash-topbar {
+    display:flex; align-items:center; gap:10px;
+    padding:8px 16px;
+    background:var(--surface);
+    border-bottom:1.5px solid var(--border);
+    flex-shrink:0;
+    z-index:10;
+  }
+  .dash-logo { font-family:'Space Mono',monospace; font-size:14px; font-weight:700; white-space:nowrap; flex-shrink:0; }
+  .dash-logo span { color:var(--accent-light); }
+  .dash-code-badge { font-family:'Space Mono',monospace; font-size:16px; font-weight:700; letter-spacing:.15em; color:var(--accent-light); background:var(--bg); border:1.5px solid var(--border); border-radius:8px; padding:3px 10px; white-space:nowrap; flex-shrink:0; }
+  .dash-stats { display:flex; gap:10px; align-items:center; font-family:'Space Mono',monospace; font-size:11px; flex-wrap:wrap; }
+  .stat { display:flex; align-items:center; gap:4px; color:var(--fg-dim); white-space:nowrap; }
+  .stat .dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+  .stat .num { font-weight:700; }
+  .stat.s-verbonden .dot { background:var(--green); box-shadow:0 0 4px var(--green); }
+  .stat.s-verbonden .num { color:var(--green); }
+  .stat.s-klaar .dot { background:var(--green); }
+  .stat.s-klaar .num { color:var(--green); }
+  .stat.s-hand .dot { background:var(--blue); box-shadow:0 0 4px var(--blue); }
+  .stat.s-hand .num { color:#6699ff; }
+  .dash-end-btn { margin-left:auto; padding:5px 12px; background:transparent; border:1.5px solid var(--border); border-radius:8px; color:var(--fg-dim); font-family:'DM Sans',sans-serif; font-size:12px; font-weight:500; cursor:pointer; transition:all .12s; white-space:nowrap; flex-shrink:0; }
+  .dash-end-btn:hover { background:#2d1515; color:var(--red); border-color:var(--red); }
+
+  /* GLOBAL STATE BAR — visueel signaal als freeze/spotlight aan staat */
+  .global-state-bar {
+    display:none; align-items:center; gap:14px;
+    padding:10px 16px;
+    border-bottom:2px solid;
+    flex-shrink:0;
+    font-family:'Space Mono',monospace;
+    font-weight:700;
+    animation:state-pulse 2s ease-in-out infinite;
+  }
+  .global-state-bar.visible { display:flex; }
+  .global-state-bar.freeze {
+    background:linear-gradient(90deg, rgba(168,200,255,0.12), rgba(168,200,255,0.04));
+    border-bottom-color:#a8c8ff;
+    color:#a8c8ff;
+  }
+  .global-state-bar.spotlight {
+    background:linear-gradient(90deg, rgba(124,106,247,0.18), rgba(124,106,247,0.05));
+    border-bottom-color:var(--accent);
+    color:var(--accent-light);
+  }
+  .global-state-bar.timer-up {
+    background:linear-gradient(90deg, rgba(246,173,85,0.18), rgba(246,173,85,0.05));
+    border-bottom-color:var(--orange);
+    color:var(--orange);
+  }
+  .global-state-icon { font-size:20px; }
+  .global-state-text { font-size:14px; letter-spacing:.05em; }
+  .global-state-name { font-size:14px; color:var(--fg); margin-left:auto; }
+  @keyframes state-pulse { 0%,100% { opacity:1; } 50% { opacity:0.7; } }
+
+  /* 2-kolom body */
+  .dash-body { flex:1; display:flex; overflow:hidden; }
+
+  /* ── MIDDEN — Leerlingengrid ── */
+  .dash-grid-wrap { flex:1; overflow-y:auto; padding:14px; }
+  .dash-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:14px; align-content:start; }
+
+  /* Board cards */
+  .board-card { background:var(--surface); border:4px solid rgba(255,255,255,0.12); border-radius:12px; overflow:visible; cursor:pointer; transition:transform .15s,border-color .2s,box-shadow .2s; display:flex; flex-direction:column; position:relative; }
+  .board-card:hover { transform:translateY(-2px); }
+  .board-card.state-klaar { border-color:#48bb78 !important; box-shadow:0 0 0 2px #48bb78,0 0 18px rgba(72,187,120,0.4) !important; }
+  .board-card.state-hand { border-color:#3366ff !important; box-shadow:0 0 0 2px #3366ff,0 0 20px rgba(51,102,255,0.5) !important; animation:pulse-blue 1.8s infinite; }
+  .board-card.state-spotlight { border-color:var(--accent) !important; box-shadow:0 0 0 3px var(--accent),0 0 24px rgba(124,106,247,0.6) !important; }
+  @keyframes pulse-blue { 0%,100%{box-shadow:0 0 0 2px #3366ff,0 0 16px rgba(51,102,255,0.4);} 50%{box-shadow:0 0 0 5px #3366ff,0 0 28px rgba(51,102,255,0.6);} }
+  .board-card-header { display:flex; align-items:center; gap:8px; padding:9px 12px; background:var(--surface2); border-bottom:1px solid var(--border); border-radius:8px 8px 0 0; }
+  .board-card-dot { width:7px; height:7px; border-radius:50%; background:var(--green); box-shadow:0 0 5px var(--green); flex-shrink:0; }
+  .board-card-name { font-family:'Space Mono',monospace; font-size:15px; font-weight:700; color:var(--fg); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1; }
+  .card-badges { display:flex; gap:4px; margin-left:auto; flex-shrink:0; }
+  .badge { font-size:11px; padding:2px 7px; border-radius:10px; font-family:'Space Mono',monospace; font-weight:700; }
+  .badge-klaar { background:rgba(72,187,120,0.2); color:#48bb78; }
+  .badge-hand  { background:rgba(51,102,255,0.2); color:#6699ff; }
+  .badge-spotlight { background:rgba(124,106,247,0.25); color:var(--accent-light); }
+  .board-card-canvas-wrap { position:relative; width:100%; }
+  .board-card-canvas { width:100%; aspect-ratio:16/9; display:block; background:var(--canvas-bg); border-radius:0 0 8px 8px; }
+
+  /* Spotlight-actie knop op kaart, verschijnt bij hover */
+  .card-spotlight-btn {
+    position:absolute; bottom:10px; right:10px;
+    background:var(--accent); border:none; border-radius:8px;
+    color:#fff; font-family:'DM Sans',sans-serif; font-size:12px; font-weight:700;
+    padding:6px 12px; cursor:pointer;
+    opacity:0; transition:opacity .15s, background .15s, transform .1s;
+    box-shadow:0 4px 12px rgba(0,0,0,0.4);
+    z-index:5;
+  }
+  .board-card:hover .card-spotlight-btn { opacity:1; }
+  .card-spotlight-btn:hover { background:var(--accent-light); }
+  .card-spotlight-btn:active { transform:scale(.95); }
+  .board-card.state-spotlight .card-spotlight-btn { opacity:1; background:var(--red); }
+  .board-card.state-spotlight .card-spotlight-btn:hover { background:#ff8080; }
+
+  .empty-state { grid-column:1/-1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; padding:60px 20px; color:var(--fg-dim); }
+  .empty-state .big { font-size:40px; }
+  .empty-state p { font-family:'Space Mono',monospace; font-size:13px; text-align:center; line-height:1.8; }
+
+  /* ── RECHTER SIDEBAR — Klassikale tools ── */
+  .right-sidebar {
+    width:var(--right-w); flex-shrink:0;
+    background:var(--surface);
+    border-left:1.5px solid var(--border);
+    display:flex; flex-direction:column;
+    overflow-y:auto;
+  }
+
+  /* QR sectie bovenaan rechts */
+  .qr-section { padding:14px; border-bottom:1.5px solid var(--border); display:flex; flex-direction:column; align-items:center; gap:8px; flex-shrink:0; }
+  .qr-section-title { font-family:'Space Mono',monospace; font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--fg-dim); align-self:flex-start; }
+  #qr-canvas-dash { border-radius:10px; background:#fff; padding:6px; }
+  .qr-code-text { font-family:'Space Mono',monospace; font-size:20px; font-weight:700; letter-spacing:.15em; color:var(--accent-light); cursor:pointer; }
+  .qr-copy-hint { font-family:'Space Mono',monospace; font-size:10px; color:var(--fg-dim); cursor:pointer; }
+  .qr-copy-hint:hover { color:var(--fg); }
+
+  /* GROTE KNOPPEN sectie */
+  .controls-section { padding:14px; display:flex; flex-direction:column; gap:10px; border-bottom:1.5px solid var(--border); flex-shrink:0; }
+  .controls-title { font-family:'Space Mono',monospace; font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--fg-dim); }
+
+  /* ── FREEZE BIG BUTTON ── */
+  .big-btn {
+    width:100%; padding:18px 14px;
+    background:var(--surface2); border:2px solid var(--border);
+    border-radius:12px; color:var(--fg);
+    font-family:'DM Sans',sans-serif; font-size:15px; font-weight:700;
+    cursor:pointer; transition:all .15s;
+    display:flex; align-items:center; gap:12px;
+    text-align:left;
+  }
+  .big-btn:hover { background:var(--surface3); border-color:var(--fg-dim); }
+  .big-btn:active { transform:scale(.98); }
+  .big-btn .big-icon { font-size:26px; flex-shrink:0; }
+  .big-btn .big-label { flex:1; line-height:1.2; }
+  .big-btn .big-sub { display:block; font-family:'Space Mono',monospace; font-size:10px; font-weight:400; color:var(--fg-dim); letter-spacing:.05em; margin-top:2px; }
+
+  .big-btn.freeze.active {
+    background:linear-gradient(135deg, rgba(168,200,255,0.18), rgba(168,200,255,0.06));
+    border-color:#a8c8ff;
+    color:#a8c8ff;
+    box-shadow:0 0 0 1px #a8c8ff inset, 0 0 24px rgba(168,200,255,0.25);
+  }
+  .big-btn.freeze.active .big-sub { color:rgba(168,200,255,0.7); }
+
+  .big-btn.spotlight-cancel {
+    background:linear-gradient(135deg, rgba(124,106,247,0.18), rgba(124,106,247,0.06));
+    border-color:var(--accent);
+    color:var(--accent-light);
+    box-shadow:0 0 0 1px var(--accent) inset, 0 0 24px rgba(124,106,247,0.25);
+  }
+
+  /* Mijn bordje knop — paars-cyan accent */
+  .big-btn.my-board {
+    background:linear-gradient(135deg, rgba(124,106,247,0.10), rgba(124,106,247,0.02));
+    border-color:rgba(124,106,247,0.5);
+  }
+  .big-btn.my-board:hover {
+    border-color:var(--accent);
+    background:linear-gradient(135deg, rgba(124,106,247,0.18), rgba(124,106,247,0.05));
+  }
+  .big-btn.my-board.has-shared { border-color:var(--accent); }
+  .big-btn.my-board.has-shared .big-sub { color:var(--accent-light); }
+
+  /* Wis alles — rood, voorzichtig */
+  .big-btn.wipe-all { color:var(--fg); }
+  .big-btn.wipe-all:hover {
+    background:linear-gradient(135deg, rgba(245,101,101,0.15), rgba(245,101,101,0.04));
+    border-color:var(--red);
+    color:var(--red);
+  }
+  .big-btn.wipe-all:hover .big-sub { color:rgba(245,101,101,0.6); }
+
+  /* ── TIMER ── */
+  .timer-display {
+    display:flex; align-items:center; gap:10px;
+    padding:14px 14px;
+    background:var(--surface2); border:2px solid var(--border);
+    border-radius:12px;
+  }
+  .timer-display.running {
+    background:linear-gradient(135deg, rgba(124,106,247,0.12), rgba(124,106,247,0.04));
+    border-color:var(--accent);
+  }
+  .timer-display.warning {
+    background:linear-gradient(135deg, rgba(246,173,85,0.18), rgba(246,173,85,0.04));
+    border-color:var(--orange);
+  }
+  .timer-clock {
+    font-family:'Space Mono',monospace; font-size:32px; font-weight:700;
+    color:var(--fg); letter-spacing:.05em;
+    flex:1; text-align:center;
+  }
+  .timer-display.warning .timer-clock { color:var(--orange); }
+  .timer-display.running .timer-clock { color:var(--accent-light); }
+
+  .timer-controls { display:flex; gap:6px; flex-wrap:wrap; }
+  .timer-preset-btn {
+    flex:1; min-width:48px;
+    padding:8px 4px;
+    background:var(--surface2); border:1.5px solid var(--border); border-radius:8px;
+    color:var(--fg-dim); font-family:'Space Mono',monospace; font-size:12px; font-weight:700;
+    cursor:pointer; transition:all .12s;
+  }
+  .timer-preset-btn:hover { color:var(--fg); border-color:var(--fg-dim); }
+  .timer-action-row { display:flex; gap:6px; }
+  .timer-action-btn {
+    flex:1; padding:10px;
+    background:var(--surface2); border:1.5px solid var(--border); border-radius:8px;
+    color:var(--fg-dim); font-family:'DM Sans',sans-serif; font-size:13px; font-weight:600;
+    cursor:pointer; transition:all .12s;
+  }
+  .timer-action-btn:hover { color:var(--fg); border-color:var(--fg-dim); }
+  .timer-action-btn.start { color:var(--accent-light); border-color:var(--accent); }
+  .timer-action-btn.start:hover { background:rgba(124,106,247,0.1); }
+  .timer-action-btn.stop { color:var(--red); }
+  .timer-action-btn.stop:hover { background:#2d1515; border-color:var(--red); }
+  .timer-toggle-row { display:flex; align-items:center; gap:8px; padding:6px 2px; }
+  .timer-toggle-row label { font-family:'Space Mono',monospace; font-size:11px; color:var(--fg-dim); cursor:pointer; flex:1; }
+  .timer-toggle { width:36px; height:20px; background:var(--surface3); border:1.5px solid var(--border); border-radius:10px; position:relative; cursor:pointer; transition:background .15s; flex-shrink:0; }
+  .timer-toggle::after { content:''; position:absolute; top:2px; left:2px; width:14px; height:14px; background:var(--fg-dim); border-radius:50%; transition:left .15s, background .15s; }
+  .timer-toggle.on { background:var(--accent); border-color:var(--accent); }
+  .timer-toggle.on::after { left:18px; background:#fff; }
+
+  /* ════════════════════════════════════════
+     FULLSCREEN OVERLAY (feedback geven)
+  ════════════════════════════════════════ */
+  #fullscreen-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.97); z-index:100; flex-direction:column; }
+  #fullscreen-overlay.visible { display:flex; }
+  .fs-header { display:flex; align-items:center; gap:8px; padding:9px 14px; background:var(--surface); border-bottom:1.5px solid var(--border); flex-shrink:0; flex-wrap:wrap; }
+  .fs-name { font-family:'Space Mono',monospace; font-size:17px; font-weight:700; color:var(--accent-light); white-space:nowrap; }
+  .fs-nav { display:flex; align-items:center; gap:7px; }
+  .fs-nav button { background:var(--surface2); border:1.5px solid var(--border); border-radius:8px; color:var(--fg-dim); font-family:'Space Mono',monospace; font-size:11px; padding:5px 11px; cursor:pointer; transition:all .12s; }
+  .fs-nav button:hover { color:var(--fg); border-color:var(--fg-dim); }
+  .fs-pos { font-family:'Space Mono',monospace; font-size:11px; color:var(--fg-dim); }
+  .fs-tools { display:flex; align-items:center; gap:5px; margin-left:8px; padding-left:10px; border-left:1px solid var(--border); flex-wrap:wrap; }
+  .fs-tool-btn { width:32px; height:32px; background:transparent; border:1.5px solid transparent; border-radius:8px; color:var(--fg-dim); font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background .12s,border-color .12s,color .12s; }
+  .fs-tool-btn:hover { background:var(--bg); color:var(--fg); }
+  .fs-tool-btn.active { background:var(--feedback); border-color:var(--feedback); color:#111; }
+  .fs-color-dot { width:18px; height:18px; border-radius:50%; border:2px solid transparent; cursor:pointer; transition:transform .12s,border-color .12s; }
+  .fs-color-dot:hover { transform:scale(1.2); }
+  .fs-color-dot.active { border-color:#fff; transform:scale(1.2); }
+  .fs-size-btn { width:28px; height:28px; background:transparent; border:1.5px solid var(--border); border-radius:6px; color:var(--fg); font-family:'Space Mono',monospace; font-size:10px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background .12s; }
+  .fs-size-btn:hover,.fs-size-btn.active { background:var(--border); }
+  .fs-action-btn { padding:4px 9px; background:transparent; border:1.5px solid var(--border); border-radius:7px; color:var(--fg-dim); font-family:'DM Sans',sans-serif; font-size:11px; cursor:pointer; transition:all .12s; white-space:nowrap; }
+  .fs-action-btn:hover { color:var(--fg); border-color:var(--fg-dim); }
+  .fs-action-btn.danger:hover { background:#3d1f1f; color:var(--red); border-color:var(--red); }
+  .fs-action-btn.spotlight { color:var(--accent-light); border-color:var(--accent); }
+  .fs-action-btn.spotlight:hover { background:rgba(124,106,247,0.12); }
+  .zoom-ind { font-family:'Space Mono',monospace; font-size:10px; color:var(--fg-dim); white-space:nowrap; }
+  .fs-close { margin-left:auto; width:34px; height:34px; background:var(--surface2); border:1.5px solid var(--border); border-radius:8px; color:var(--fg); font-size:17px; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .fs-close:hover { background:var(--border); }
+  .fs-canvas-wrap { flex:1; position:relative; overflow:hidden; background:var(--canvas-bg); cursor:crosshair; }
+  #fs-canvas { position:absolute; top:0; left:0; width:100%; height:100%; }
+  #fs-text-overlay { display:none; position:absolute; z-index:50; background:transparent; border:1.5px dashed var(--feedback); border-radius:3px; overflow:hidden; }
+  #fs-text-overlay.visible { display:block; }
+  #fs-textarea { width:100%; height:100%; background:transparent; border:none; outline:none; color:var(--feedback); font-family:'Space Mono',monospace; font-size:16px; resize:none; padding:4px; line-height:1.4; }
+
+  /* HAND TOAST */
+  #hand-toast { position:fixed; bottom:24px; right:calc(var(--right-w) + 16px); z-index:200; background:#0a0a20; border:2px solid #3366ff; border-radius:12px; padding:14px 20px; font-family:'Space Mono',monospace; font-size:14px; font-weight:700; color:#6699ff; display:none; flex-direction:column; gap:4px; box-shadow:0 8px 32px rgba(0,0,0,0.6); max-width:260px; }
+  #hand-toast.visible { display:flex; }
+  #hand-toast-name { font-size:18px; }
+  #hand-toast-sub { font-size:11px; opacity:.7; }
+
+  /* ════════════════════════════════════════
+     MIJN BORDJE — docent eigen werkruimte
+     (lijkt qua structuur op fs, andere kleuren)
+  ════════════════════════════════════════ */
+  #myboard-overlay {
+    display:none; position:fixed; inset:0; z-index:110;
+    background:var(--canvas-bg); flex-direction:column;
+  }
+  #myboard-overlay.visible { display:flex; }
+  .mb-header {
+    display:flex; align-items:center; gap:8px; padding:8px 14px;
+    background:var(--surface); border-bottom:1.5px solid var(--border);
+    flex-shrink:0; flex-wrap:wrap;
+  }
+  .mb-title {
+    font-family:'Space Mono',monospace; font-size:15px; font-weight:700;
+    color:var(--accent-light); white-space:nowrap;
+  }
+  .mb-share-btn {
+    padding:7px 16px;
+    background:linear-gradient(135deg, var(--accent), var(--accent-light));
+    border:none; border-radius:8px; color:#fff;
+    font-family:'DM Sans',sans-serif; font-size:13px; font-weight:700;
+    cursor:pointer; transition:transform .1s, box-shadow .15s;
+    box-shadow:0 2px 8px rgba(124,106,247,0.3);
+    white-space:nowrap;
+  }
+  .mb-share-btn:hover { box-shadow:0 4px 14px rgba(124,106,247,0.5); }
+  .mb-share-btn:active { transform:scale(.96); }
+  .mb-share-btn.just-shared {
+    background:linear-gradient(135deg, var(--green), #5fd99a);
+  }
+  .mb-share-status {
+    font-family:'Space Mono',monospace; font-size:11px;
+    color:var(--fg-dim); white-space:nowrap;
+  }
+  .mb-share-status.success { color:var(--green); }
+  .mb-tools {
+    display:flex; align-items:center; gap:5px; margin-left:6px;
+    padding-left:10px; border-left:1px solid var(--border);
+    flex-wrap:wrap; flex:1;
+  }
+  .mb-sep { width:1px; height:22px; background:var(--border); margin:0 3px; }
+  .mb-tool-btn {
+    width:32px; height:32px;
+    background:transparent; border:1.5px solid transparent; border-radius:8px;
+    color:var(--fg-dim); font-size:13px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    transition:all .12s;
+  }
+  .mb-tool-btn:hover { background:var(--bg); color:var(--fg); }
+  .mb-tool-btn.active {
+    background:var(--accent); border-color:var(--accent); color:#fff;
+  }
+  .mb-tool-btn.instrument-btn.active {
+    background:rgba(124,106,247,0.18);
+    border-color:var(--accent); color:var(--accent-light);
+    box-shadow:0 0 0 1px var(--accent) inset, 0 0 12px rgba(124,106,247,0.35);
+  }
+  .mb-style-btn {
+    width:32px; height:32px;
+    background:transparent; border:1.5px solid transparent; border-radius:8px;
+    cursor:pointer; display:flex; align-items:center; justify-content:center;
+    transition:all .12s;
+  }
+  .mb-style-btn:hover { background:var(--bg); }
+  .mb-style-btn.active { background:var(--accent); border-color:var(--accent); }
+  .mb-style-btn svg { width:20px; height:13px; }
+  .mb-color-dot {
+    width:18px; height:18px; border-radius:50%; border:2px solid transparent;
+    cursor:pointer; transition:transform .12s, border-color .12s;
+  }
+  .mb-color-dot:hover { transform:scale(1.2); }
+  .mb-color-dot.active { border-color:#fff; transform:scale(1.2); }
+  .mb-size-btn {
+    width:28px; height:28px;
+    background:transparent; border:1.5px solid var(--border); border-radius:6px;
+    color:var(--fg); font-family:'Space Mono',monospace; font-size:10px;
+    cursor:pointer; display:flex; align-items:center; justify-content:center;
+  }
+  .mb-size-btn:hover, .mb-size-btn.active { background:var(--border); }
+  .mb-action-btn {
+    padding:5px 10px;
+    background:transparent; border:1.5px solid var(--border); border-radius:7px;
+    color:var(--fg-dim); font-family:'DM Sans',sans-serif; font-size:11px;
+    cursor:pointer; transition:all .12s; white-space:nowrap;
+  }
+  .mb-action-btn:hover { color:var(--fg); border-color:var(--fg-dim); }
+  .mb-action-btn.danger:hover {
+    background:#3d1f1f; color:var(--red); border-color:var(--red);
+  }
+  .mb-close {
+    margin-left:auto; width:32px; height:32px;
+    background:var(--surface2); border:1.5px solid var(--border); border-radius:8px;
+    color:var(--fg); font-size:16px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    flex-shrink:0;
+  }
+  .mb-close:hover { background:var(--border); }
+  .mb-canvas-wrap {
+    flex:1; position:relative; overflow:hidden;
+    background:var(--canvas-bg); cursor:crosshair;
+  }
+  #mb-canvas { position:absolute; top:0; left:0; width:100%; height:100%; touch-action:none; }
+  #mb-text-overlay {
+    display:none; position:absolute; z-index:50; background:transparent;
+    border:1.5px dashed var(--accent); border-radius:3px; overflow:hidden;
+  }
+  #mb-text-overlay.visible { display:block; }
+  #mb-textarea {
+    width:100%; height:100%; background:transparent; border:none; outline:none;
+    color:var(--fg); font-family:'Space Mono',monospace; font-size:16px;
+    resize:none; padding:4px; line-height:1.4;
+  }
+
+  ::-webkit-scrollbar { width:4px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+  ::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+</style>
+</head>
+<body>
+
+<!-- ══ SETUP ══ -->
+<div id="setup-screen">
+  <div><div class="logo">wis<span>bordje</span></div><div class="logo-sub">Docentenpaneel</div></div>
+  <div class="setup-card">
+    <div class="setup-top">
+      <div class="code-block">
+        <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--fg-dim);">Sessiecode</div>
+        <div class="code-display" id="code-display" title="Klik om te kopiëren">——</div>
+        <div class="code-hint" id="copy-hint">klik om te kopiëren</div>
+      </div>
+      <canvas id="qr-canvas-setup" width="110" height="110"></canvas>
+    </div>
+    <button class="start-btn" id="start-btn">Sessie starten →</button>
+    <button class="new-code-btn" id="new-code-btn">nieuwe code genereren</button>
+  </div>
+</div>
+
+<!-- ══ DASHBOARD ══ -->
+<div id="dashboard">
+
+  <div class="dash-topbar">
+    <div class="dash-logo">wis<span>bordje</span></div>
+    <div class="dash-code-badge" id="dash-code">——</div>
+    <div class="dash-stats">
+      <div class="stat s-verbonden"><div class="dot"></div><span class="num" id="stat-verbonden">0</span> verbonden</div>
+      <div class="stat s-klaar"><div class="dot" style="background:var(--green)"></div><span class="num" id="stat-klaar">0</span> klaar</div>
+      <div class="stat s-hand"><div class="dot"></div><span class="num" id="stat-hand">0</span> vraag</div>
+    </div>
+    <button class="dash-end-btn" id="end-btn">Sessie beëindigen</button>
+  </div>
+
+  <!-- Globale staat-balk: zichtbaar als freeze of spotlight aan staat -->
+  <div class="global-state-bar" id="global-state-bar">
+    <span class="global-state-icon" id="gsb-icon">🔒</span>
+    <span class="global-state-text" id="gsb-text">Bordjes bevroren</span>
+    <span class="global-state-name" id="gsb-name"></span>
+  </div>
+
+  <div class="dash-body">
+
+    <div class="dash-grid-wrap">
+      <div class="dash-grid" id="dash-grid">
+        <div class="empty-state">
+          <div class="big">📋</div>
+          <p>Wachten op leerlingen…<br>Deel de QR-code of sessiecode.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="right-sidebar">
+
+      <div class="qr-section">
+        <div class="qr-section-title">Leerlingen joinen via</div>
+        <canvas id="qr-canvas-dash" width="160" height="160"></canvas>
+        <div class="qr-code-text" id="qr-code-text">——</div>
+        <div class="qr-copy-hint" id="qr-copy-hint">klik om te kopiëren</div>
+      </div>
+
+      <!-- Mijn bordje sectie -->
+      <div class="controls-section">
+        <div class="controls-title">Mijn bordje</div>
+        <button class="big-btn my-board" id="open-myboard-btn">
+          <span class="big-icon">📝</span>
+          <span class="big-label">Open mijn bordje<span class="big-sub" id="myboard-sub">teken voor, deel met klas</span></span>
+        </button>
+      </div>
+
+      <!-- Klassikale knoppen -->
+      <div class="controls-section">
+        <div class="controls-title">Klas</div>
+
+        <button class="big-btn freeze" id="freeze-btn">
+          <span class="big-icon">🔒</span>
+          <span class="big-label">Freeze<span class="big-sub">vergrendel alle bordjes</span></span>
+        </button>
+
+        <button class="big-btn spotlight-cancel" id="spotlight-cancel-btn" style="display:none;">
+          <span class="big-icon">🔦</span>
+          <span class="big-label">Spotlight uitzetten<span class="big-sub" id="spotlight-cancel-sub">— terug naar eigen bordjes</span></span>
+        </button>
+
+        <button class="big-btn wipe-all" id="wipe-all-btn">
+          <span class="big-icon">🗑️</span>
+          <span class="big-label">Wis alle bordjes<span class="big-sub">incl. gedeelde opdracht</span></span>
+        </button>
+      </div>
+
+      <!-- Timer -->
+      <div class="controls-section">
+        <div class="controls-title">Timer</div>
+
+        <div class="timer-display" id="timer-display">
+          <div class="timer-clock" id="timer-clock">--:--</div>
+        </div>
+
+        <div class="timer-controls">
+          <button class="timer-preset-btn" data-min="1">1m</button>
+          <button class="timer-preset-btn" data-min="2">2m</button>
+          <button class="timer-preset-btn" data-min="5">5m</button>
+          <button class="timer-preset-btn" data-min="10">10m</button>
+          <button class="timer-preset-btn" data-min="15">15m</button>
+        </div>
+
+        <div class="timer-toggle-row">
+          <label for="timer-freeze-toggle">Bevries bij 0:00</label>
+          <div class="timer-toggle on" id="timer-freeze-toggle"></div>
+        </div>
+
+        <div class="timer-action-row">
+          <button class="timer-action-btn start" id="timer-start-btn">Start</button>
+          <button class="timer-action-btn stop" id="timer-stop-btn">Stop</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ══ FULLSCREEN ══ -->
+<div id="fullscreen-overlay">
+  <div class="fs-header">
+    <div class="fs-name" id="fs-name">—</div>
+    <div class="fs-nav">
+      <button id="fs-prev">← Vorige</button>
+      <span class="fs-pos" id="fs-pos">1 / 1</span>
+      <button id="fs-next">Volgende →</button>
+    </div>
+    <div class="fs-tools">
+      <button class="fs-tool-btn active" id="fs-tool-pen" title="Pen">✏️</button>
+      <button class="fs-tool-btn" id="fs-tool-text" title="Tekst">T</button>
+      <button class="fs-tool-btn" id="fs-tool-eraser" title="Gum">⌫</button>
+      <div class="fs-color-dot active" style="background:#f6ad55" data-color="#f6ad55"></div>
+      <div class="fs-color-dot" style="background:#f56565" data-color="#f56565"></div>
+      <div class="fs-color-dot" style="background:#68d391" data-color="#68d391"></div>
+      <div class="fs-color-dot" style="background:#63b3ed" data-color="#63b3ed"></div>
+      <div class="fs-color-dot" style="background:#ffffff" data-color="#ffffff"></div>
+      <button class="fs-size-btn active" data-size="3">S</button>
+      <button class="fs-size-btn" data-size="6">M</button>
+      <button class="fs-size-btn" data-size="12">L</button>
+      <button class="fs-action-btn spotlight" id="fs-spotlight-btn">🔦 Spotlight</button>
+      <button class="fs-action-btn danger" id="fs-wis-btn">Wis feedback</button>
+      <button class="fs-action-btn" id="fs-fit-btn">⊡ Passend</button>
+      <span class="zoom-ind" id="fs-zoom-ind">100%</span>
+    </div>
+    <button class="fs-close" id="fs-close">✕</button>
+  </div>
+  <div class="fs-canvas-wrap" id="fs-canvas-wrap">
+    <canvas id="fs-canvas"></canvas>
+    <div id="fs-text-overlay"><textarea id="fs-textarea" placeholder="Typ feedback…"></textarea></div>
+  </div>
+</div>
+
+<!-- ══ MIJN BORDJE (docent eigen werkruimte) ══ -->
+<div id="myboard-overlay">
+  <div class="mb-header">
+    <div class="mb-title">📝 Mijn bordje</div>
+    <button class="mb-share-btn" id="mb-share-btn">📤 Deel met klas</button>
+    <span class="mb-share-status" id="mb-share-status"></span>
+    <div class="mb-tools">
+      <button class="mb-tool-btn active" id="mb-tool-pen" title="Pen">✏️</button>
+      <button class="mb-tool-btn" id="mb-tool-text" title="Tekst">T</button>
+      <button class="mb-tool-btn" id="mb-tool-line" title="Lijn">╱</button>
+      <button class="mb-tool-btn" id="mb-tool-eraser" title="Gum">⌫</button>
+      <div class="mb-sep"></div>
+      <button class="mb-tool-btn instrument-btn" id="mb-tool-ruler" title="Liniaal">📏</button>
+      <button class="mb-tool-btn instrument-btn" id="mb-tool-compass" title="Passer">⊙</button>
+      <div class="mb-sep"></div>
+      <button class="mb-style-btn active" data-style="solid"><svg viewBox="0 0 22 14" fill="none"><line x1="1" y1="7" x2="21" y2="7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+      <button class="mb-style-btn" data-style="dashed"><svg viewBox="0 0 22 14" fill="none"><line x1="1" y1="7" x2="21" y2="7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-dasharray="4 3"/></svg></button>
+      <div class="mb-sep"></div>
+      <div class="mb-color-dot active" style="background:#ffffff" data-color="#ffffff"></div>
+      <div class="mb-color-dot" style="background:#f56565" data-color="#f56565"></div>
+      <div class="mb-color-dot" style="background:#f6ad55" data-color="#f6ad55"></div>
+      <div class="mb-color-dot" style="background:#68d391" data-color="#68d391"></div>
+      <div class="mb-color-dot" style="background:#63b3ed" data-color="#63b3ed"></div>
+      <div class="mb-color-dot" style="background:#b794f4" data-color="#b794f4"></div>
+      <div class="mb-sep"></div>
+      <button class="mb-size-btn active" data-size="3">S</button>
+      <button class="mb-size-btn" data-size="6">M</button>
+      <button class="mb-size-btn" data-size="12">L</button>
+      <div class="mb-sep"></div>
+      <button class="mb-action-btn" id="mb-undo-btn" title="Ctrl+Z">↩ Undo</button>
+      <button class="mb-action-btn" id="mb-fit-btn">⊡ Passend</button>
+      <button class="mb-action-btn danger" id="mb-clear-btn">Wis</button>
+      <span class="zoom-ind" id="mb-zoom-ind">100%</span>
+    </div>
+    <button class="mb-close" id="mb-close" title="Sluiten (je werk blijft staan)">✕</button>
+  </div>
+  <div class="mb-canvas-wrap" id="mb-canvas-wrap">
+    <canvas id="mb-canvas"></canvas>
+    <div id="mb-text-overlay"><textarea id="mb-textarea" placeholder="Typ hier…"></textarea></div>
+  </div>
+</div>
+
+<!-- HAND TOAST -->
+<div id="hand-toast">
+  <div id="hand-toast-name">✋ —</div>
+  <div id="hand-toast-sub">heeft een vraag</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
+import { getDatabase, ref, set, update, onValue, remove, off }
+  from "https://www.gstatic.com/firebasejs/12.12.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBF8sEpRPghG777M4H4kwHb8uzbxYkEDqA",
+  authDomain: "wisbordjes.firebaseapp.com",
+  databaseURL: "https://wisbordjes-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "wisbordjes",
+  storageBucket: "wisbordjes.firebasestorage.app",
+  messagingSenderId: "306967459853",
+  appId: "1:306967459853:web:bd0003d5a65d3840683d44"
+};
+const app = initializeApp(firebaseConfig);
+const db  = getDatabase(app);
+
+// ════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════
+let sessieCode='', sessieRef=null, controlRef=null;
+let leerlingen={}, leerlingNamen=[];
+let fsIndex=0, fsNaam='';
+let prevHandState={}, toastTimeout=null;
+let fsPanX=0, fsPanY=0, fsZoom=1;
+const MIN_ZOOM=0.05, MAX_ZOOM=8;
+let fsPanning=false, fsPanStart={x:0,y:0}, fsPanStartPan={x:0,y:0};
+let fsIsDrawing=false, fsCurrentStroke=null;
+let fsTextStartWorld={x:0,y:0}, fsDrawingTextBox=false;
+let fsTool='pen', fsColor='#f6ad55', fsSize=3;
+let feedbackStrokes={}; // per leerling: array van feedback-strokes
+let fsCanvasSetup=false;
+
+// Klassikale state (gemirrord vanuit /control in db)
+let isFrozen = false;
+let spotlightTarget = null;
+let timerEndsAt = null;
+let timerFreezeOnEnd = true;
+let timerInterval = null;
+let timerHasFiredFreeze = false;
+
+// ════════════════════════════════════════
+// SETUP — code generatie + start
+// ════════════════════════════════════════
+function generateCode() {
+  const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  return Array.from({length:6},()=>chars[Math.floor(Math.random()*chars.length)]).join('');
+}
+
+function drawQR(canvasEl, url, size) {
+  setTimeout(()=>{
+    try {
+      const tmp=document.createElement('div');
+      new window.QRCode(tmp,{text:url,width:size,height:size,colorDark:'#000',colorLight:'#fff',correctLevel:window.QRCode.CorrectLevel.M});
+      setTimeout(()=>{const g=tmp.querySelector('canvas');if(g){const c=canvasEl.getContext('2d');c.drawImage(g,0,0,size,size);}},100);
+    } catch(e) {
+      const c=canvasEl.getContext('2d');c.fillStyle='#fff';c.fillRect(0,0,size,size);c.fillStyle='#333';c.font='10px monospace';c.fillText('QR laden…',10,size/2);
+    }
+  },300);
+}
+
+function buildLeerlingURL() {
+  // Vervang docent door leerling, voeg ?code=XXX toe zodat sessiecode meteen ingevuld is
+  const url = window.location.href.split('?')[0].split('#')[0].replace(/docent/i,'leerling');
+  return `${url}?code=${sessieCode}`;
+}
+
+function setCode(code) {
+  sessieCode=code;
+  document.getElementById('code-display').textContent=code;
+  drawQR(document.getElementById('qr-canvas-setup'), buildLeerlingURL(), 120);
+}
+
+setCode(generateCode());
+document.getElementById('new-code-btn').addEventListener('click',()=>setCode(generateCode()));
+document.getElementById('code-display').addEventListener('click',()=>{
+  navigator.clipboard?.writeText(sessieCode).catch(()=>{});
+  document.getElementById('copy-hint').textContent='✓ gekopieerd!';
+  setTimeout(()=>document.getElementById('copy-hint').textContent='klik om te kopiëren',2000);
+});
+
+// ════════════════════════════════════════
+// SESSIE STARTEN
+// ════════════════════════════════════════
+document.getElementById('start-btn').addEventListener('click', startSessie);
+
+async function startSessie() {
+  sessieRef = ref(db, `sessies/${sessieCode}`);
+  controlRef = ref(db, `sessies/${sessieCode}/control`);
+  await set(sessieRef, {
+    actief: true,
+    aangemaakt: Date.now(),
+    leerlingen: {},
+    control: { freeze: false, spotlight: null, timerEndsAt: null, timerFreezeOnEnd: true, timerUp: false }
+  });
+  toonDashboard();
+}
+
+function toonDashboard() {
+  document.getElementById('setup-screen').style.display = 'none';
+  document.getElementById('dashboard').style.display = 'flex';
+  document.getElementById('dash-code').textContent = sessieCode;
+  document.getElementById('qr-code-text').textContent = sessieCode;
+  drawQR(document.getElementById('qr-canvas-dash'), buildLeerlingURL(), 160);
+  document.getElementById('qr-code-text').onclick = () => {
+    navigator.clipboard?.writeText(sessieCode).catch(()=>{});
+    document.getElementById('qr-copy-hint').textContent = '✓ gekopieerd!';
+    setTimeout(() => document.getElementById('qr-copy-hint').textContent = 'klik om te kopiëren', 2000);
+  };
+  setupFsTools();
+  setupControlsUI();
+  startListening();
+}
+
+// ════════════════════════════════════════
+// LEERLINGEN-LISTENER
+// ════════════════════════════════════════
+function startListening() {
+  onValue(ref(db,`sessies/${sessieCode}/leerlingen`),snapshot=>{
+    updateDashboard(snapshot.val()||{});
+  });
+  onValue(controlRef, snap => {
+    const c = snap.val() || {};
+    isFrozen = !!c.freeze;
+    spotlightTarget = c.spotlight || null;
+    timerEndsAt = c.timerEndsAt || null;
+    timerFreezeOnEnd = c.timerFreezeOnEnd !== false;
+    timerHasFiredFreeze = !!c.timerUp;
+    updateControlsUI();
+    updateGlobalStateBar();
+    updateTimerDisplay();
+    // Eventueel timer-tick activeren
+    rescheduleTimerCheck();
+  });
+}
+
+function updateDashboard(data) {
+  leerlingen=data;
+  leerlingNamen=Object.keys(data).sort();
+  document.getElementById('stat-verbonden').textContent=leerlingNamen.length;
+  document.getElementById('stat-klaar').textContent=leerlingNamen.filter(n=>data[n].klaar).length;
+  document.getElementById('stat-hand').textContent=leerlingNamen.filter(n=>data[n].hand).length;
+
+  const grid=document.getElementById('dash-grid');
+  Array.from(grid.querySelectorAll('.board-card')).forEach(card=>{if(!data[card.dataset.naam])card.remove();});
+  if(leerlingNamen.length>0) grid.querySelector('.empty-state')?.remove();
+  if(leerlingNamen.length===0 && !grid.querySelector('.empty-state')) {
+    const es = document.createElement('div');
+    es.className = 'empty-state';
+    es.innerHTML = '<div class="big">📋</div><p>Wachten op leerlingen…<br>Deel de QR-code of sessiecode.</p>';
+    grid.appendChild(es);
+  }
+
+  leerlingNamen.forEach(naam=>{
+    const d=data[naam];
+    let card=grid.querySelector(`[data-naam="${CSS.escape(naam)}"]`);
+    if(!card){card=createCard(naam);grid.appendChild(card);}
+    card.classList.remove('state-klaar','state-hand','state-spotlight');
+    if(d.hand) card.classList.add('state-hand');
+    else if(d.klaar) card.classList.add('state-klaar');
+    if(spotlightTarget === naam) card.classList.add('state-spotlight');
+
+    const badges=card.querySelector('.card-badges');
+    badges.innerHTML='';
+    if(spotlightTarget === naam) badges.innerHTML+=`<span class="badge badge-spotlight">🔦 Spotlight</span>`;
+    if(d.hand)  badges.innerHTML+=`<span class="badge badge-hand">✋ Vraag</span>`;
+    if(d.klaar) badges.innerHTML+=`<span class="badge badge-klaar">✓ Klaar</span>`;
+
+    // Spotlight-knop tekst
+    const spotBtn = card.querySelector('.card-spotlight-btn');
+    if(spotlightTarget === naam) spotBtn.textContent = '✕ Stop spotlight';
+    else spotBtn.textContent = '🔦 Spotlight';
+
+    // Strokes renderen
+    let strokes = d.strokes || [];
+    if(!Array.isArray(strokes)) strokes = Object.values(strokes);
+    const fb = feedbackStrokes[naam] || [];
+    renderMini(strokes, fb, card.querySelector('.board-card-canvas'), d);
+    if(fsNaam===naam && document.getElementById('fullscreen-overlay').classList.contains('visible')) renderFs();
+
+    // Hand alert (eenmalig)
+    const wasRaised=prevHandState[naam]||false;
+    if(d.hand&&!wasRaised) triggerHandAlert(naam);
+    prevHandState[naam]=!!d.hand;
+  });
+}
+
+function createCard(naam) {
+  const card=document.createElement('div');
+  card.className='board-card'; card.dataset.naam=naam;
+  card.innerHTML=`
+    <div class="board-card-header">
+      <div class="board-card-dot"></div>
+      <div class="board-card-name">${escapeHTML(naam)}</div>
+      <div class="card-badges"></div>
+    </div>
+    <div class="board-card-canvas-wrap">
+      <canvas class="board-card-canvas"></canvas>
+      <button class="card-spotlight-btn">🔦 Spotlight</button>
+    </div>`;
+  card.addEventListener('click', e => {
+    if(e.target.closest('.card-spotlight-btn')) return;
+    openFullscreen(naam);
+  });
+  card.querySelector('.card-spotlight-btn').addEventListener('click', e => {
+    e.stopPropagation();
+    if(spotlightTarget === naam) {
+      // Nu deze leerling in spotlight → uitzetten
+      setSpotlight(null);
+    } else {
+      setSpotlight(naam);
+    }
+  });
+  return card;
+}
+
+// ════════════════════════════════════════
+// HAND ALERT
+// ════════════════════════════════════════
+function triggerHandAlert(naam) {
+  if('speechSynthesis' in window){const utt=new SpeechSynthesisUtterance(`${naam} heeft een vraag`);utt.lang='nl-NL';utt.rate=0.95;window.speechSynthesis.speak(utt);}
+  const toast=document.getElementById('hand-toast');
+  document.getElementById('hand-toast-name').textContent=`✋ ${naam}`;
+  toast.classList.add('visible');clearTimeout(toastTimeout);
+  toastTimeout=setTimeout(()=>toast.classList.remove('visible'),5000);
+  try{const ac=new AudioContext(),osc=ac.createOscillator(),gain=ac.createGain();osc.connect(gain);gain.connect(ac.destination);osc.frequency.setValueAtTime(880,ac.currentTime);osc.frequency.setValueAtTime(660,ac.currentTime+0.1);gain.gain.setValueAtTime(0.3,ac.currentTime);gain.gain.exponentialRampToValueAtTime(0.001,ac.currentTime+0.4);osc.start();osc.stop(ac.currentTime+0.4);}catch(e){}
+}
+
+// ════════════════════════════════════════
+// MINI / FULLSCREEN RENDER
+// ════════════════════════════════════════
+function computeBBox(strokes){let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;for(const s of strokes){const pts=s.points||(s.x1!==undefined?[{x:s.x1,y:s.y1},{x:s.x2,y:s.y2}]:[{x:s.x||0,y:s.y||0}]);for(const p of pts){if(p.x<minX)minX=p.x;if(p.y<minY)minY=p.y;if(p.x>maxX)maxX=p.x;if(p.y>maxY)maxY=p.y;}}return minX===Infinity?null:{minX,minY,maxX,maxY};}
+function mergeBBox(a,b){if(!a)return b;if(!b)return a;return{minX:Math.min(a.minX,b.minX),minY:Math.min(a.minY,b.minY),maxX:Math.max(a.maxX,b.maxX),maxY:Math.max(a.maxY,b.maxY)};}
+function applyLineStyle(c,style,size){if(style==='dashed')c.setLineDash([size*3,size*2]);else c.setLineDash([]);if(style==='highlight'){c.globalAlpha=0.35;c.lineWidth=size*5;}}
+
+function drawStroke(s,c){
+  c.save();const col=s.color==='#ERASER'?'#111116':(s.color||'#fff');
+  c.strokeStyle=col;c.fillStyle=col;c.lineWidth=s.size||3;c.lineCap='round';c.lineJoin='round';
+  applyLineStyle(c,s.style||'solid',s.size||3);
+  if(s.tool==='pen'||s.tool==='eraser'){if(!s.points?.length){c.restore();return;}c.beginPath();c.moveTo(s.points[0].x,s.points[0].y);for(let i=1;i<s.points.length;i++)c.lineTo(s.points[i].x,s.points[i].y);c.stroke();}
+  else if(s.tool==='line'){c.beginPath();c.moveTo(s.x1,s.y1);c.lineTo(s.x2,s.y2);c.stroke();}
+  else if(s.tool==='text'){c.setLineDash([]);c.globalAlpha=1;c.font=`${s.size}px "Space Mono",monospace`;c.fillStyle=col;c.textBaseline='top';(s.text||'').split('\n').forEach((line,i)=>{c.fillText(line,s.x+4,s.y+4+i*s.size*1.4);});}
+  else if(s.tool==='shape') drawShape(s,c);
+  c.restore();
+}
+
+function drawShape(s,c){const x1=s.x1,y1=s.y1,x2=s.x2,y2=s.y2,w=x2-x1,h=y2-y1,cx=(x1+x2)/2,cy=(y1+y2)/2,rx=Math.abs(w)/2,ry=Math.abs(h)/2;c.beginPath();switch(s.shape){case 'rect':c.strokeRect(x1,y1,w,h);break;case 'square':{const side=Math.min(Math.abs(w),Math.abs(h))*Math.sign(w);c.strokeRect(x1,y1,side,side*Math.sign(h)/Math.sign(w||1));break;}case 'circle':c.arc(cx,cy,Math.max(rx,ry),0,Math.PI*2);c.stroke();break;case 'ellipse':c.ellipse(cx,cy,rx||1,ry||1,0,0,Math.PI*2);c.stroke();break;case 'tri-eq':c.moveTo((x1+x2)/2,y1);c.lineTo(x2,y2);c.lineTo(x1,y2);c.closePath();c.stroke();break;case 'tri-iso':c.moveTo(cx,y1);c.lineTo(x2,y2);c.lineTo(x1,y2);c.closePath();c.stroke();break;case 'tri-right-l':c.moveTo(x1,y1);c.lineTo(x1,y2);c.lineTo(x2,y2);c.closePath();c.stroke();break;case 'tri-right-r':c.moveTo(x2,y1);c.lineTo(x1,y2);c.lineTo(x2,y2);c.closePath();c.stroke();break;case 'semi-circle':c.arc(cx,y2,rx,Math.PI,0);c.closePath();c.stroke();break;case 'quarter-circle':c.arc(x1,y2,Math.max(Math.abs(w),Math.abs(h)),-Math.PI/2,0);c.lineTo(x1,y2);c.closePath();c.stroke();break;case 'arrow':{const a=Math.atan2(y2-y1,x2-x1),hl=Math.min(20,Math.hypot(w,h)*0.3);c.moveTo(x1,y1);c.lineTo(x2,y2);c.stroke();c.beginPath();c.moveTo(x2,y2);c.lineTo(x2-hl*Math.cos(a-0.4),y2-hl*Math.sin(a-0.4));c.lineTo(x2-hl*Math.cos(a+0.4),y2-hl*Math.sin(a+0.4));c.closePath();c.fill();break;}case 'arrow-double':{const a=Math.atan2(y2-y1,x2-x1),hl=Math.min(20,Math.hypot(w,h)*0.3);c.moveTo(x1,y1);c.lineTo(x2,y2);c.stroke();c.beginPath();c.moveTo(x2,y2);c.lineTo(x2-hl*Math.cos(a-0.4),y2-hl*Math.sin(a-0.4));c.lineTo(x2-hl*Math.cos(a+0.4),y2-hl*Math.sin(a+0.4));c.closePath();c.fill();c.beginPath();c.moveTo(x1,y1);c.lineTo(x1+hl*Math.cos(a-0.4),y1+hl*Math.sin(a-0.4));c.lineTo(x1+hl*Math.cos(a+0.4),y1+hl*Math.sin(a+0.4));c.closePath();c.fill();break;}case 'hexagon':case 'pentagon':case 'ngon':{const sides=s.shape==='hexagon'?6:s.shape==='pentagon'?5:(s.ngonSides||6),r=Math.max(rx,ry);for(let i=0;i<sides;i++){const a=(i/sides)*Math.PI*2-Math.PI/2;i===0?c.moveTo(cx+r*Math.cos(a),cy+r*Math.sin(a)):c.lineTo(cx+r*Math.cos(a),cy+r*Math.sin(a));}c.closePath();c.stroke();break;}case 'parallelogram':{const off=Math.abs(w)*0.2;c.moveTo(x1+off,y1);c.lineTo(x2,y1);c.lineTo(x2-off,y2);c.lineTo(x1,y2);c.closePath();c.stroke();break;}case 'sector':{const num=s.sectorNum||3,den=s.sectorDen||4,end=(num/den)*Math.PI*2-Math.PI/2;c.moveTo(cx,cy);c.arc(cx,cy,Math.max(rx,ry),-Math.PI/2,end);c.closePath();c.stroke();break;}}}
+
+function renderMini(strokes,feedback,canvas,data){
+  const w=canvas.offsetWidth||240,h=canvas.offsetHeight||135;
+  if(canvas.width!==w)canvas.width=w;if(canvas.height!==h)canvas.height=h;
+  const ctx=canvas.getContext('2d');ctx.fillStyle='#111116';ctx.fillRect(0,0,w,h);
+  const all=[...strokes,...feedback];if(!all.length)return;
+  const bb=mergeBBox(data?.bbox||computeBBox(strokes),computeBBox(feedback));if(!bb)return;
+  const pad=14,bbW=(bb.maxX-bb.minX)||200,bbH=(bb.maxY-bb.minY)||150;
+  const scale=Math.min((w-pad*2)/bbW,(h-pad*2)/bbH);
+  const offX=w/2-((bb.minX+bb.maxX)/2)*scale,offY=h/2-((bb.minY+bb.maxY)/2)*scale;
+  ctx.save();ctx.translate(offX,offY);ctx.scale(scale,scale);
+  strokes.forEach(s=>drawStroke(s,ctx));feedback.forEach(s=>drawStroke(s,ctx));
+  ctx.restore();
+}
+
+// ════════════════════════════════════════
+// FULLSCREEN (feedback geven)
+// ════════════════════════════════════════
+function openFullscreen(naam){
+  fsIndex=leerlingNamen.indexOf(naam);fsNaam=naam;
+  if(!feedbackStrokes[naam])feedbackStrokes[naam]=[];
+  fitFs();
+  document.getElementById('fs-name').textContent=naam;
+  document.getElementById('fs-pos').textContent=`${fsIndex+1} / ${leerlingNamen.length}`;
+  updateFsSpotlightBtn();
+  document.getElementById('fullscreen-overlay').classList.add('visible');
+  setupFsCanvas();renderFs();
+}
+function showFs(naam){
+  fsNaam=naam;fsIndex=leerlingNamen.indexOf(naam);
+  if(!feedbackStrokes[naam])feedbackStrokes[naam]=[];
+  document.getElementById('fs-name').textContent=naam;
+  document.getElementById('fs-pos').textContent=`${fsIndex+1} / ${leerlingNamen.length}`;
+  updateFsSpotlightBtn();
+  fitFs();renderFs();
+}
+function updateFsSpotlightBtn() {
+  const btn = document.getElementById('fs-spotlight-btn');
+  if(spotlightTarget === fsNaam) btn.textContent = '🔦 Stop spotlight';
+  else btn.textContent = '🔦 Spotlight';
+}
+function fitFs(){
+  const canvas=document.getElementById('fs-canvas');
+  const w=canvas.offsetWidth||window.innerWidth,h=canvas.offsetHeight||window.innerHeight-80;
+  const data=leerlingen[fsNaam]||{};
+  let strokes = data.strokes || [];
+  if(!Array.isArray(strokes)) strokes = Object.values(strokes);
+  const bb=mergeBBox(data?.bbox||computeBBox(strokes),computeBBox(feedbackStrokes[fsNaam]||[]));
+  if(!bb){fsPanX=0;fsPanY=0;fsZoom=1;updateFsZoom();return;}
+  const pad=60,bbW=(bb.maxX-bb.minX)||400,bbH=(bb.maxY-bb.minY)||300;
+  fsZoom=Math.max(MIN_ZOOM,Math.min(MAX_ZOOM,Math.min((w-pad*2)/bbW,(h-pad*2)/bbH)));
+  fsPanX=w/2-((bb.minX+bb.maxX)/2)*fsZoom;fsPanY=h/2-((bb.minY+bb.maxY)/2)*fsZoom;
+  updateFsZoom();
+}
+function updateFsZoom(){document.getElementById('fs-zoom-ind').textContent=Math.round(fsZoom*100)+'%';}
+function renderFs(){
+  const canvas=document.getElementById('fs-canvas'),wrap=canvas.parentElement;
+  canvas.width=wrap.clientWidth;canvas.height=wrap.clientHeight;
+  const ctx=canvas.getContext('2d');ctx.fillStyle='#111116';ctx.fillRect(0,0,canvas.width,canvas.height);
+  const data=leerlingen[fsNaam]||{};
+  let strokes = data.strokes || [];
+  if(!Array.isArray(strokes)) strokes = Object.values(strokes);
+  const fb=feedbackStrokes[fsNaam]||[];
+  ctx.save();ctx.translate(fsPanX,fsPanY);ctx.scale(fsZoom,fsZoom);
+  strokes.forEach(s=>drawStroke(s,ctx));
+  fb.forEach(s=>drawStroke(s,ctx));
+  if(fsCurrentStroke)drawStroke(fsCurrentStroke,ctx);
+  ctx.restore();
+}
+
+// FS CANVAS EVENTS
+function setupFsCanvas(){
+  if(fsCanvasSetup)return;fsCanvasSetup=true;
+  const wrap=document.getElementById('fs-canvas-wrap');
+  wrap.addEventListener('pointerdown',fsOnDown);wrap.addEventListener('pointermove',fsOnMove);
+  wrap.addEventListener('pointerup',fsOnUp);wrap.addEventListener('pointerleave',fsOnUp);
+  wrap.addEventListener('wheel',fsOnWheel,{passive:false});
+  const ta=document.getElementById('fs-textarea');
+  ta.addEventListener('blur',()=>setTimeout(fsCommitText,100));
+  ta.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();fsCommitText();}});
+}
+function fsScreenToWorld(sx,sy){return{x:(sx-fsPanX)/fsZoom,y:(sy-fsPanY)/fsZoom};}
+function fsSP(e){const r=document.getElementById('fs-canvas').getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top};}
+function fsWP(e){const s=fsSP(e);return fsScreenToWorld(s.x,s.y);}
+
+function fsOnDown(e){
+  e.preventDefault();const sp=fsSP(e);
+  if(e.button===1||(e.button===0&&e.altKey)){fsPanning=true;fsPanStart={x:sp.x,y:sp.y};fsPanStartPan={x:fsPanX,y:fsPanY};document.getElementById('fs-canvas-wrap').style.cursor='grabbing';return;}
+  if(fsTool==='text'){fsCommitText();fsTextStartWorld=fsWP(e);const ov=document.getElementById('fs-text-overlay');ov.style.left=sp.x+'px';ov.style.top=sp.y+'px';ov.style.width='2px';ov.style.height='2px';fsDrawingTextBox=true;fsIsDrawing=true;return;}
+  fsIsDrawing=true;const wp=fsWP(e);
+  if(fsTool==='pen')fsCurrentStroke={tool:'pen',color:fsColor,size:fsSize,style:'solid',points:[wp]};
+  else if(fsTool==='eraser')fsCurrentStroke={tool:'eraser',color:'#ERASER',size:fsSize*4,style:'solid',points:[wp]};
+}
+function fsOnMove(e){
+  e.preventDefault();
+  if(fsPanning){const sp=fsSP(e);fsPanX=fsPanStartPan.x+(sp.x-fsPanStart.x);fsPanY=fsPanStartPan.y+(sp.y-fsPanStart.y);renderFs();return;}
+  if(!fsIsDrawing)return;const sp=fsSP(e);
+  if(fsTool==='text'&&fsDrawingTextBox){const tsw={x:fsTextStartWorld.x*fsZoom+fsPanX,y:fsTextStartWorld.y*fsZoom+fsPanY};const ov=document.getElementById('fs-text-overlay');ov.style.left=Math.min(sp.x,tsw.x)+'px';ov.style.top=Math.min(sp.y,tsw.y)+'px';ov.style.width=Math.abs(sp.x-tsw.x)+'px';ov.style.height=Math.abs(sp.y-tsw.y)+'px';return;}
+  if((fsTool==='pen'||fsTool==='eraser')&&fsCurrentStroke){fsCurrentStroke.points.push(fsWP(e));renderFs();}
+}
+function fsOnUp(e){
+  if(fsPanning){fsPanning=false;document.getElementById('fs-canvas-wrap').style.cursor='crosshair';return;}
+  if(!fsIsDrawing)return;fsIsDrawing=false;
+  if(fsTool==='text'&&fsDrawingTextBox){
+    const sp=fsSP(e);const tsw={x:fsTextStartWorld.x*fsZoom+fsPanX,y:fsTextStartWorld.y*fsZoom+fsPanY};
+    const bw=Math.max(Math.abs(sp.x-tsw.x),80),bh=Math.max(Math.abs(sp.y-tsw.y),36);
+    const ov=document.getElementById('fs-text-overlay');
+    ov.style.left=Math.min(sp.x,tsw.x)+'px';ov.style.top=Math.min(sp.y,tsw.y)+'px';
+    ov.style.width=bw+'px';ov.style.height=bh+'px';
+    const ta=document.getElementById('fs-textarea');ta.style.fontSize=(fsSize*4)+'px';ta.value='';
+    ov.classList.add('visible');fsDrawingTextBox=false;setTimeout(()=>ta.focus(),50);return;
+  }
+  if(fsCurrentStroke){if(!feedbackStrokes[fsNaam])feedbackStrokes[fsNaam]=[];feedbackStrokes[fsNaam].push(fsCurrentStroke);fsCurrentStroke=null;syncFeedback();renderFs();}
+}
+function fsCommitText(){
+  const ov=document.getElementById('fs-text-overlay');if(!ov.classList.contains('visible'))return;
+  const text=document.getElementById('fs-textarea').value.trim();
+  if(text){const bx=parseInt(ov.style.left),by=parseInt(ov.style.top);const wp=fsScreenToWorld(bx,by);if(!feedbackStrokes[fsNaam])feedbackStrokes[fsNaam]=[];feedbackStrokes[fsNaam].push({tool:'text',text,x:wp.x,y:wp.y,w:parseInt(ov.style.width)/fsZoom,h:parseInt(ov.style.height)/fsZoom,color:fsColor,size:fsSize*4,style:'solid'});syncFeedback();renderFs();}
+  ov.classList.remove('visible');document.getElementById('fs-textarea').value='';
+}
+function fsOnWheel(e){
+  e.preventDefault();const sp=fsSP(e);const factor=e.deltaY<0?1.1:0.9;
+  const nz=Math.max(MIN_ZOOM,Math.min(MAX_ZOOM,fsZoom*factor));
+  fsPanX=sp.x-(sp.x-fsPanX)*(nz/fsZoom);fsPanY=sp.y-(sp.y-fsPanY)*(nz/fsZoom);
+  fsZoom=nz;updateFsZoom();renderFs();
+}
+function syncFeedback(){
+  if(!fsNaam) return;
+  set(ref(db,`sessies/${sessieCode}/leerlingen/${fsNaam}/feedback`), feedbackStrokes[fsNaam] || []);
+}
+
+function setupFsTools() {
+  ['pen','text','eraser'].forEach(t=>{
+    document.getElementById(`fs-tool-${t}`).addEventListener('click',()=>{
+      fsCommitText();fsTool=t;
+      document.querySelectorAll('.fs-tool-btn').forEach(b=>b.classList.remove('active'));
+      document.getElementById(`fs-tool-${t}`).classList.add('active');
+      document.getElementById('fs-canvas-wrap').style.cursor=t==='eraser'?'cell':t==='text'?'text':'crosshair';
+    });
+  });
+  document.querySelectorAll('.fs-color-dot').forEach(d=>{d.addEventListener('click',()=>{document.querySelectorAll('.fs-color-dot').forEach(x=>x.classList.remove('active'));d.classList.add('active');fsColor=d.dataset.color;document.getElementById('fs-textarea').style.color=fsColor;});});
+  document.querySelectorAll('.fs-size-btn').forEach(b=>{b.addEventListener('click',()=>{document.querySelectorAll('.fs-size-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');fsSize=parseInt(b.dataset.size);});});
+  document.getElementById('fs-wis-btn').addEventListener('click',()=>{if(!confirm('Feedback wissen?'))return;feedbackStrokes[fsNaam]=[];syncFeedback();renderFs();});
+  document.getElementById('fs-fit-btn').addEventListener('click',fitFs);
+  document.getElementById('fs-spotlight-btn').addEventListener('click',()=>{
+    if(spotlightTarget === fsNaam) setSpotlight(null);
+    else setSpotlight(fsNaam);
+  });
+  document.getElementById('fs-close').addEventListener('click',()=>{fsCommitText();document.getElementById('fullscreen-overlay').classList.remove('visible');fsNaam='';});
+  document.getElementById('fs-prev').addEventListener('click',()=>{if(!leerlingNamen.length)return;fsCommitText();fsIndex=(fsIndex-1+leerlingNamen.length)%leerlingNamen.length;showFs(leerlingNamen[fsIndex]);});
+  document.getElementById('fs-next').addEventListener('click',()=>{if(!leerlingNamen.length)return;fsCommitText();fsIndex=(fsIndex+1)%leerlingNamen.length;showFs(leerlingNamen[fsIndex]);});
+  document.addEventListener('keydown',e=>{
+    if(!document.getElementById('fullscreen-overlay').classList.contains('visible'))return;
+    if(e.key==='ArrowRight'||e.key==='ArrowDown')document.getElementById('fs-next').click();
+    if(e.key==='ArrowLeft'||e.key==='ArrowUp')document.getElementById('fs-prev').click();
+    if(e.key==='Escape')document.getElementById('fs-close').click();
+    if((e.ctrlKey||e.metaKey)&&e.key==='z'){e.preventDefault();if(feedbackStrokes[fsNaam]?.length){feedbackStrokes[fsNaam].pop();syncFeedback();renderFs();}}
+  });
+  window.addEventListener('resize',()=>{if(document.getElementById('fullscreen-overlay').classList.contains('visible'))renderFs();});
+}
+
+// ════════════════════════════════════════
+// CONTROLS — Freeze, Spotlight, Timer
+// ════════════════════════════════════════
+function setupControlsUI() {
+  document.getElementById('freeze-btn').addEventListener('click', () => {
+    setFreeze(!isFrozen);
+  });
+  document.getElementById('spotlight-cancel-btn').addEventListener('click', () => {
+    setSpotlight(null);
+  });
+  document.getElementById('wipe-all-btn').addEventListener('click', () => {
+    if(!confirm('Alle leerlingbordjes wissen, inclusief jouw gedeelde opdracht?\n\nDit kan niet ongedaan gemaakt worden.')) return;
+    wipeAllBoards();
+  });
+  document.getElementById('open-myboard-btn').addEventListener('click', openMyBoard);
+
+  // Timer
+  document.querySelectorAll('.timer-preset-btn').forEach(b => {
+    b.addEventListener('click', () => {
+      const minutes = parseInt(b.dataset.min);
+      startTimer(minutes * 60);
+    });
+  });
+  document.getElementById('timer-start-btn').addEventListener('click', () => {
+    // Default: als geen tijd gezet, 5 min
+    if(!timerEndsAt || timerEndsAt < Date.now()) startTimer(5 * 60);
+  });
+  document.getElementById('timer-stop-btn').addEventListener('click', stopTimer);
+  document.getElementById('timer-freeze-toggle').addEventListener('click', () => {
+    timerFreezeOnEnd = !timerFreezeOnEnd;
+    update(controlRef, { timerFreezeOnEnd });
+  });
+
+  // Setup mijn bordje engine (alvast — opent pas bij klik op knop)
+  setupMyBoard();
+}
+
+async function setFreeze(on) {
+  // Als we expliciet unfreezen, ook timerUp resetten zodat 'tijd op'-melding weggaat
+  await update(controlRef, { freeze: on, timerUp: false });
+}
+
+async function setSpotlight(naam) {
+  await update(controlRef, { spotlight: naam });
+}
+
+async function startTimer(seconds) {
+  const endsAt = Date.now() + seconds * 1000;
+  await update(controlRef, { timerEndsAt: endsAt, timerFreezeOnEnd, timerUp: false });
+}
+
+async function stopTimer() {
+  await update(controlRef, { timerEndsAt: null, timerUp: false });
+}
+
+function updateControlsUI() {
+  // Freeze knop
+  const fb = document.getElementById('freeze-btn');
+  fb.classList.toggle('active', isFrozen);
+  fb.querySelector('.big-label').innerHTML = isFrozen
+    ? `Freeze actief<span class="big-sub">klik om te ontgrendelen</span>`
+    : `Freeze<span class="big-sub">vergrendel alle bordjes</span>`;
+  fb.querySelector('.big-icon').textContent = isFrozen ? '❄️' : '🔒';
+
+  // Spotlight cancel knop
+  const sb = document.getElementById('spotlight-cancel-btn');
+  if(spotlightTarget) {
+    sb.style.display = '';
+    document.getElementById('spotlight-cancel-sub').textContent =
+      `${spotlightTarget} — klik om uit te zetten`;
+  } else {
+    sb.style.display = 'none';
+  }
+
+  // Timer toggle
+  const tg = document.getElementById('timer-freeze-toggle');
+  tg.classList.toggle('on', timerFreezeOnEnd);
+
+  // Update spotlight knoppen op kaarten (worden in updateDashboard al ververst, maar ook hier voor zekerheid)
+  document.querySelectorAll('.board-card').forEach(card => {
+    const naam = card.dataset.naam;
+    card.classList.toggle('state-spotlight', spotlightTarget === naam);
+    const btn = card.querySelector('.card-spotlight-btn');
+    if(btn) btn.textContent = spotlightTarget === naam ? '✕ Stop spotlight' : '🔦 Spotlight';
+  });
+  if(document.getElementById('fullscreen-overlay').classList.contains('visible')) updateFsSpotlightBtn();
+}
+
+function updateGlobalStateBar() {
+  const bar = document.getElementById('global-state-bar');
+  const icon = document.getElementById('gsb-icon');
+  const text = document.getElementById('gsb-text');
+  const name = document.getElementById('gsb-name');
+  bar.classList.remove('visible','freeze','spotlight','timer-up');
+  // Prioriteit: spotlight > timer-up > freeze
+  if(spotlightTarget) {
+    bar.classList.add('visible','spotlight');
+    icon.textContent = '🔦';
+    text.textContent = 'Spotlight actief';
+    name.textContent = spotlightTarget;
+  } else if(timerHasFiredFreeze) {
+    bar.classList.add('visible','timer-up');
+    icon.textContent = '⏰';
+    text.textContent = 'Tijd op — bordjes bevroren';
+    name.textContent = '';
+  } else if(isFrozen) {
+    bar.classList.add('visible','freeze');
+    icon.textContent = '❄️';
+    text.textContent = 'Bordjes bevroren';
+    name.textContent = '';
+  }
+}
+
+// ════════════════════════════════════════
+// TIMER — visuele update + auto-fire
+// ════════════════════════════════════════
+function updateTimerDisplay() {
+  if(timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+  const display = document.getElementById('timer-display');
+  const clock = document.getElementById('timer-clock');
+  display.classList.remove('running','warning');
+
+  if(!timerEndsAt) {
+    clock.textContent = '--:--';
+    return;
+  }
+
+  const tick = () => {
+    const ms = timerEndsAt - Date.now();
+    if(ms <= 0) {
+      clock.textContent = '00:00';
+      display.classList.remove('running');
+      display.classList.add('warning');
+      clearInterval(timerInterval); timerInterval = null;
+      return;
+    }
+    const s = Math.ceil(ms / 1000);
+    const m = Math.floor(s / 60), r = s % 60;
+    clock.textContent = `${String(m).padStart(2,'0')}:${String(r).padStart(2,'0')}`;
+    display.classList.add('running');
+    if(s <= 10) { display.classList.remove('running'); display.classList.add('warning'); }
+    else        { display.classList.remove('warning'); display.classList.add('running'); }
+  };
+  tick();
+  timerInterval = setInterval(tick, 250);
+}
+
+let timerCheckTimeout = null;
+function rescheduleTimerCheck() {
+  // Eén centrale check die freeze afdwingt zodra timer afloopt.
+  // We doen dit alleen in de docent (single source of truth).
+  if(timerCheckTimeout) { clearTimeout(timerCheckTimeout); timerCheckTimeout = null; }
+  if(!timerEndsAt) return;
+  const ms = timerEndsAt - Date.now();
+  if(ms <= 0) {
+    fireTimerEnd();
+    return;
+  }
+  timerCheckTimeout = setTimeout(fireTimerEnd, ms + 50);
+}
+
+async function fireTimerEnd() {
+  // Voorkom dubbele firing
+  if(!timerEndsAt || timerEndsAt > Date.now() + 100) return;
+  if(timerHasFiredFreeze) return; // al gedaan
+  if(timerFreezeOnEnd) {
+    await update(controlRef, { freeze: true, timerUp: true });
+  }
+}
+
+// ════════════════════════════════════════
+// WIPE ALL BOARDS — globale wis
+// ════════════════════════════════════════
+async function wipeAllBoards() {
+  // 1) Trigger op control-niveau zodat leerlingen merken
+  // 2) Verwijder alle leerling-strokes en feedback uit Firebase
+  const wipeAt = Date.now();
+  // Reset assignment ook (anders herwint de oude opdracht zich bij join)
+  await update(controlRef, { wipeAt, assignment: null });
+  // Voor elke huidige leerling: leeg hun strokes en feedback in DB
+  const leerlingenObj = leerlingen || {};
+  const updates = {};
+  Object.keys(leerlingenObj).forEach(naam => {
+    updates[`sessies/${sessieCode}/leerlingen/${naam}/strokes`] = [];
+    updates[`sessies/${sessieCode}/leerlingen/${naam}/feedback`] = [];
+    updates[`sessies/${sessieCode}/leerlingen/${naam}/bbox`] = null;
+  });
+  if(Object.keys(updates).length) await update(ref(db), updates);
+  // Reset onze eigen 'gedeeld'-status visueel
+  myBoardSharedAt = 0;
+  updateMyBoardButton();
+}
+
+// ════════════════════════════════════════
+// MIJN BORDJE — docent eigen werkruimte
+// ════════════════════════════════════════
+//
+// Een complete teken-engine zoals de leerling die heeft, inclusief
+// liniaal/passer. Strokes worden lokaal bewaard en gepersisteerd in
+// localStorage zodat een refresh ze niet weggooit. Bij "Deel met klas"
+// nemen we een snapshot en pushen naar /control/assignment.
+// ════════════════════════════════════════
+
+// State
+let mbStrokes = [];
+let mbCurrentStroke = null;
+let mbIsDrawing = false;
+let mbCanvas, mbCtx;
+let mbTool = 'pen', mbColor = '#ffffff', mbSize = 3, mbStyle = 'solid';
+let mbPanX = 0, mbPanY = 0, mbZoom = 1;
+let mbIsPanning = false, mbPanStart = {x:0,y:0}, mbPanStartPan = {x:0,y:0};
+let mbLastTouchDist = null, mbLastTouchMid = null;
+
+// Instrument-state (apart van leerling-state)
+let mbInstrument = null;
+let mbInstrumentDrag = null;
+let mbSnapDraw = null;
+let mbDashOffset = 0;
+let mbDashAnimId = null;
+
+// Tekstmodus
+let mbTextStartWorld = {x:0,y:0}, mbDrawingTextBox = false;
+
+// Share tracking
+let myBoardSharedAt = 0;
+
+// localStorage key (per sessiecode zodat verschillende sessies elkaar niet vervuilen)
+function mbStorageKey() { return `wisbordje-myboard-${sessieCode}`; }
+
+function loadMyBoardFromStorage() {
+  try {
+    const raw = localStorage.getItem(mbStorageKey());
+    if(raw) {
+      const data = JSON.parse(raw);
+      mbStrokes = Array.isArray(data.strokes) ? data.strokes : [];
+      myBoardSharedAt = data.sharedAt || 0;
+    }
+  } catch(e) { mbStrokes = []; }
+}
+function saveMyBoardToStorage() {
+  try {
+    localStorage.setItem(mbStorageKey(), JSON.stringify({
+      strokes: mbStrokes, sharedAt: myBoardSharedAt
+    }));
+  } catch(e) {}
+}
+
+function setupMyBoard() {
+  loadMyBoardFromStorage();
+  updateMyBoardButton();
+
+  mbCanvas = document.getElementById('mb-canvas');
+  mbCtx = mbCanvas.getContext('2d');
+
+  // Tool-knoppen
+  ['pen','text','line','eraser'].forEach(t => {
+    document.getElementById(`mb-tool-${t}`).addEventListener('click', () => mbSetTool(t));
+  });
+  document.getElementById('mb-tool-ruler').addEventListener('click', () => mbSetInstrument('ruler'));
+  document.getElementById('mb-tool-compass').addEventListener('click', () => mbSetInstrument('compass'));
+  document.querySelectorAll('.mb-style-btn').forEach(b => {
+    b.addEventListener('click', () => {
+      document.querySelectorAll('.mb-style-btn').forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      mbStyle = b.dataset.style;
+    });
+  });
+  document.querySelectorAll('.mb-color-dot').forEach(d => {
+    d.addEventListener('click', () => {
+      document.querySelectorAll('.mb-color-dot').forEach(x => x.classList.remove('active'));
+      d.classList.add('active');
+      mbColor = d.dataset.color;
+      if(mbTool === 'eraser') mbSetTool('pen');
+    });
+  });
+  document.querySelectorAll('.mb-size-btn').forEach(b => {
+    b.addEventListener('click', () => {
+      document.querySelectorAll('.mb-size-btn').forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      mbSize = parseInt(b.dataset.size);
+    });
+  });
+  document.getElementById('mb-undo-btn').addEventListener('click', mbUndo);
+  document.getElementById('mb-clear-btn').addEventListener('click', () => {
+    if(!mbStrokes.length) return;
+    if(!confirm('Jouw bordje volledig wissen?')) return;
+    mbStrokes = []; saveMyBoardToStorage(); mbRedraw();
+  });
+  document.getElementById('mb-fit-btn').addEventListener('click', mbFitAll);
+  document.getElementById('mb-close').addEventListener('click', closeMyBoard);
+  document.getElementById('mb-share-btn').addEventListener('click', shareMyBoard);
+
+  // Drawing
+  mbCanvas.addEventListener('pointerdown', mbOnDown);
+  mbCanvas.addEventListener('pointermove', mbOnMove);
+  mbCanvas.addEventListener('pointerup', mbOnUp);
+  mbCanvas.addEventListener('pointerleave', mbOnUp);
+  mbCanvas.addEventListener('wheel', mbOnWheel, {passive:false});
+  mbCanvas.addEventListener('touchstart', mbOnTouchStart, {passive:false});
+  mbCanvas.addEventListener('touchmove', mbOnTouchMove, {passive:false});
+  mbCanvas.addEventListener('touchend', mbOnTouchEnd, {passive:false});
+
+  // Tekst-overlay
+  const ta = document.getElementById('mb-textarea');
+  ta.addEventListener('blur', () => setTimeout(mbCommitText, 100));
+  ta.addEventListener('keydown', e => {
+    if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); mbCommitText(); }
+  });
+
+  // Resize
+  window.addEventListener('resize', () => {
+    if(document.getElementById('myboard-overlay').classList.contains('visible')) {
+      mbResizeCanvas();
+    }
+  });
+
+  // Keyboard binnen mijn-bordje
+  document.addEventListener('keydown', e => {
+    if(!document.getElementById('myboard-overlay').classList.contains('visible')) return;
+    if((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { e.preventDefault(); mbUndo(); }
+    if(e.key === 'Escape') {
+      if(document.getElementById('mb-text-overlay').classList.contains('visible')) mbCommitText();
+      else closeMyBoard();
+    }
+  });
+}
+
+function openMyBoard() {
+  document.getElementById('myboard-overlay').classList.add('visible');
+  // Wacht 2 frames voor layout (zelfde truc als spotlight)
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    mbResizeCanvas();
+    mbStartDashAnim();
+    mbRedraw();
+  }));
+}
+
+function closeMyBoard() {
+  mbCommitText();
+  mbStopDashAnim();
+  document.getElementById('myboard-overlay').classList.remove('visible');
+  saveMyBoardToStorage();
+}
+
+function updateMyBoardButton() {
+  const btn = document.getElementById('open-myboard-btn');
+  const sub = document.getElementById('myboard-sub');
+  if(myBoardSharedAt > 0) {
+    btn.classList.add('has-shared');
+    sub.textContent = '✓ gedeeld met klas';
+  } else {
+    btn.classList.remove('has-shared');
+    sub.textContent = 'teken voor, deel met klas';
+  }
+}
+
+// ── Resize ──
+function mbResizeCanvas() {
+  if(!mbCanvas) return;
+  const wrap = mbCanvas.parentElement;
+  if(!wrap) return;
+  mbCanvas.width = wrap.clientWidth;
+  mbCanvas.height = wrap.clientHeight;
+  mbRedraw();
+}
+
+// ── Coord conversie ──
+function mbW2S(wx, wy) { return { x: wx*mbZoom + mbPanX, y: wy*mbZoom + mbPanY }; }
+function mbS2W(sx, sy) { return { x: (sx-mbPanX)/mbZoom, y: (sy-mbPanY)/mbZoom }; }
+function mbSP(e) { const r = mbCanvas.getBoundingClientRect(); return { x: e.clientX-r.left, y: e.clientY-r.top }; }
+function mbWP(e) { const s = mbSP(e); return mbS2W(s.x, s.y); }
+
+// ── Tool selectie ──
+function mbSetTool(t) {
+  if(mbTool === 'text') mbCommitText();
+  mbTool = t;
+  ['pen','text','line','eraser'].forEach(id => {
+    document.getElementById(`mb-tool-${id}`)?.classList.toggle('active', id === t);
+  });
+  mbCanvas.style.cursor = t==='eraser'?'cell':t==='text'?'text':'crosshair';
+}
+
+// ── Instrument ──
+function mbSetInstrument(type) {
+  if(mbInstrument && mbInstrument.type === type) {
+    mbRemoveInstrument();
+    return;
+  }
+  const cw = mbS2W(mbCanvas.width/2, mbCanvas.height/2);
+  const sizeW = 200 / mbZoom;
+  if(type === 'ruler') {
+    mbInstrument = { type:'ruler', x1: cw.x - sizeW, y1: cw.y, x2: cw.x + sizeW, y2: cw.y };
+  } else if(type === 'compass') {
+    mbInstrument = { type:'compass', cx: cw.x, cy: cw.y, px: cw.x + sizeW * 0.7, py: cw.y };
+  }
+  mbUpdateInstrumentButtons();
+  mbRedraw();
+}
+function mbRemoveInstrument() {
+  mbInstrument = null;
+  mbInstrumentDrag = null;
+  mbSnapDraw = null;
+  mbUpdateInstrumentButtons();
+  mbRedraw();
+}
+function mbUpdateInstrumentButtons() {
+  document.getElementById('mb-tool-ruler').classList.toggle('active', mbInstrument?.type === 'ruler');
+  document.getElementById('mb-tool-compass').classList.toggle('active', mbInstrument?.type === 'compass');
+}
+
+function mbStartDashAnim() {
+  if(mbDashAnimId) return;
+  const tick = () => {
+    mbDashOffset = (mbDashOffset + 0.4) % 1000;
+    mbRedraw();
+    mbDashAnimId = requestAnimationFrame(tick);
+  };
+  mbDashAnimId = requestAnimationFrame(tick);
+}
+function mbStopDashAnim() {
+  if(mbDashAnimId) { cancelAnimationFrame(mbDashAnimId); mbDashAnimId = null; }
+}
+
+// Geometrie-helpers (zelfde als leerling)
+function mbDist(ax, ay, bx, by) { return Math.hypot(ax-bx, ay-by); }
+function mbProjInfLine(px, py, ax, ay, bx, by) {
+  const dx = bx-ax, dy = by-ay; const lenSq = dx*dx + dy*dy;
+  if(lenSq < 1e-6) return { x:ax, y:ay, dist:mbDist(px,py,ax,ay) };
+  const t = ((px-ax)*dx + (py-ay)*dy) / lenSq;
+  const x = ax + t*dx, y = ay + t*dy;
+  return { x, y, dist:mbDist(px,py,x,y) };
+}
+function mbProjCircle(px, py, cx, cy, r) {
+  const dx = px-cx, dy = py-cy; const len = Math.hypot(dx,dy);
+  if(len < 1e-6) return { x:cx+r, y:cy, dist:Math.abs(r) };
+  return { x: cx + dx/len*r, y: cy + dy/len*r, dist:Math.abs(len-r) };
+}
+const MB_HANDLE_HIT = 18, MB_SNAP_HIT = 14;
+function mbHitInstrument(sx, sy) {
+  if(!mbInstrument) return null;
+  if(mbInstrument.type === 'ruler') {
+    const e1 = mbW2S(mbInstrument.x1, mbInstrument.y1);
+    const e2 = mbW2S(mbInstrument.x2, mbInstrument.y2);
+    if(mbDist(sx,sy,e1.x,e1.y) <= MB_HANDLE_HIT) return 'end1';
+    if(mbDist(sx,sy,e2.x,e2.y) <= MB_HANDLE_HIT) return 'end2';
+    const mx = (e1.x+e2.x)/2, my = (e1.y+e2.y)/2;
+    if(mbDist(sx,sy,mx,my) <= MB_HANDLE_HIT) return 'mid';
+    return null;
+  }
+  if(mbInstrument.type === 'compass') {
+    const c = mbW2S(mbInstrument.cx, mbInstrument.cy);
+    const p = mbW2S(mbInstrument.px, mbInstrument.py);
+    if(mbDist(sx,sy,p.x,p.y) <= MB_HANDLE_HIT) return 'radius';
+    if(mbDist(sx,sy,c.x,c.y) <= MB_HANDLE_HIT) return 'center';
+    return null;
+  }
+  return null;
+}
+function mbHitSnap(sx, sy) {
+  if(!mbInstrument) return null;
+  const wp = mbS2W(sx, sy);
+  if(mbInstrument.type === 'ruler') {
+    const proj = mbProjInfLine(wp.x, wp.y, mbInstrument.x1, mbInstrument.y1, mbInstrument.x2, mbInstrument.y2);
+    const ps = mbW2S(proj.x, proj.y);
+    if(mbDist(sx,sy,ps.x,ps.y) <= MB_SNAP_HIT) return 'ruler';
+  }
+  if(mbInstrument.type === 'compass') {
+    const r = mbDist(mbInstrument.cx, mbInstrument.cy, mbInstrument.px, mbInstrument.py);
+    const proj = mbProjCircle(wp.x, wp.y, mbInstrument.cx, mbInstrument.cy, r);
+    const ps = mbW2S(proj.x, proj.y);
+    if(mbDist(sx,sy,ps.x,ps.y) <= MB_SNAP_HIT) return 'compass-arc';
+  }
+  return null;
+}
+function mbSnap(wx, wy, mode) {
+  if(mode === 'ruler' && mbInstrument?.type === 'ruler') {
+    return mbProjInfLine(wx,wy, mbInstrument.x1,mbInstrument.y1, mbInstrument.x2,mbInstrument.y2);
+  }
+  if(mode === 'compass-arc' && mbInstrument?.type === 'compass') {
+    const r = mbDist(mbInstrument.cx,mbInstrument.cy, mbInstrument.px,mbInstrument.py);
+    return mbProjCircle(wx, wy, mbInstrument.cx, mbInstrument.cy, r);
+  }
+  return { x:wx, y:wy };
+}
+function mbApplyDrag(curW) {
+  if(!mbInstrumentDrag || !mbInstrument) return;
+  const dx = curW.x - mbInstrumentDrag.startWorld.x;
+  const dy = curW.y - mbInstrumentDrag.startWorld.y;
+  const start = mbInstrumentDrag.startInstrument;
+  const h = mbInstrumentDrag.handle;
+  if(mbInstrument.type === 'ruler') {
+    if(h === 'mid') { mbInstrument.x1 = start.x1+dx; mbInstrument.y1 = start.y1+dy; mbInstrument.x2 = start.x2+dx; mbInstrument.y2 = start.y2+dy; }
+    else if(h === 'end1') { mbInstrument.x1 = curW.x; mbInstrument.y1 = curW.y; }
+    else if(h === 'end2') { mbInstrument.x2 = curW.x; mbInstrument.y2 = curW.y; }
+  } else if(mbInstrument.type === 'compass') {
+    if(h === 'center') { mbInstrument.cx = start.cx+dx; mbInstrument.cy = start.cy+dy; mbInstrument.px = start.px+dx; mbInstrument.py = start.py+dy; }
+    else if(h === 'radius') { mbInstrument.px = curW.x; mbInstrument.py = curW.y; }
+  }
+}
+function mbDrawInstrument(c) {
+  if(!mbInstrument) return;
+  c.save();
+  const dashW = 8 / mbZoom, gapW = 5 / mbZoom;
+  c.lineCap = 'round'; c.lineJoin = 'round';
+  if(mbInstrument.type === 'ruler') {
+    c.strokeStyle = 'rgba(168,157,247,0.85)';
+    c.lineWidth = 1.5 / mbZoom;
+    c.setLineDash([dashW, gapW]); c.lineDashOffset = -mbDashOffset / mbZoom;
+    c.beginPath(); c.moveTo(mbInstrument.x1, mbInstrument.y1); c.lineTo(mbInstrument.x2, mbInstrument.y2); c.stroke();
+    c.setLineDash([]); c.lineDashOffset = 0;
+    const r = 7 / mbZoom;
+    c.fillStyle = 'rgba(246,173,85,0.9)'; c.strokeStyle = '#fff'; c.lineWidth = 1.5 / mbZoom;
+    [{x:mbInstrument.x1,y:mbInstrument.y1},{x:mbInstrument.x2,y:mbInstrument.y2}].forEach(p => {
+      c.beginPath(); c.arc(p.x, p.y, r, 0, Math.PI*2); c.fill(); c.stroke();
+    });
+    const mx = (mbInstrument.x1+mbInstrument.x2)/2, my = (mbInstrument.y1+mbInstrument.y2)/2;
+    c.fillStyle = 'rgba(124,106,247,0.95)';
+    c.beginPath(); c.arc(mx, my, r*1.05, 0, Math.PI*2); c.fill(); c.stroke();
+  } else if(mbInstrument.type === 'compass') {
+    const r = mbDist(mbInstrument.cx, mbInstrument.cy, mbInstrument.px, mbInstrument.py);
+    if(r > 0.5) {
+      c.strokeStyle = 'rgba(168,157,247,0.85)'; c.lineWidth = 1.5 / mbZoom;
+      c.setLineDash([dashW,gapW]); c.lineDashOffset = -mbDashOffset / mbZoom;
+      c.beginPath(); c.arc(mbInstrument.cx, mbInstrument.cy, r, 0, Math.PI*2); c.stroke();
+      c.setLineDash([]); c.lineDashOffset = 0;
+      c.strokeStyle = 'rgba(168,157,247,0.3)'; c.lineWidth = 1 / mbZoom;
+      c.setLineDash([3/mbZoom, 3/mbZoom]);
+      c.beginPath(); c.moveTo(mbInstrument.cx, mbInstrument.cy); c.lineTo(mbInstrument.px, mbInstrument.py); c.stroke();
+      c.setLineDash([]);
+    }
+    const hr = 7 / mbZoom;
+    c.lineWidth = 1.5 / mbZoom; c.strokeStyle = '#fff';
+    c.fillStyle = 'rgba(124,106,247,0.95)';
+    c.beginPath(); c.arc(mbInstrument.cx, mbInstrument.cy, hr*1.05, 0, Math.PI*2); c.fill(); c.stroke();
+    c.fillStyle = 'rgba(246,173,85,0.9)';
+    c.beginPath(); c.arc(mbInstrument.px, mbInstrument.py, hr, 0, Math.PI*2); c.fill(); c.stroke();
+  }
+  c.restore();
+}
+
+// ── Pointer events ──
+function mbOnDown(e) {
+  e.preventDefault();
+  const sp = mbSP(e);
+  if(e.button===1 || (e.button===0 && e.altKey)) {
+    mbIsPanning = true; mbPanStart = {x:sp.x, y:sp.y}; mbPanStartPan = {x:mbPanX, y:mbPanY};
+    mbCanvas.style.cursor = 'grabbing'; return;
+  }
+  if(mbInstrument) {
+    const handle = mbHitInstrument(sp.x, sp.y);
+    if(handle) {
+      const wp = mbWP(e);
+      mbInstrumentDrag = { handle, startWorld: wp, startInstrument: { ...mbInstrument } };
+      return;
+    }
+    if(mbTool === 'pen') {
+      const snapMode = mbHitSnap(sp.x, sp.y);
+      if(snapMode) {
+        const wp = mbWP(e);
+        const snapped = mbSnap(wp.x, wp.y, snapMode);
+        mbSnapDraw = { mode: snapMode };
+        mbIsDrawing = true;
+        mbCurrentStroke = {
+          tool:'pen', color:mbColor, size:mbSize, style:mbStyle,
+          points: [{ x:snapped.x, y:snapped.y }]
+        };
+        return;
+      }
+    }
+  }
+  mbIsDrawing = true;
+  const wp = mbWP(e);
+  if(mbTool === 'text') {
+    mbCommitText();
+    mbTextStartWorld = wp;
+    const ov = document.getElementById('mb-text-overlay');
+    ov.style.left = sp.x + 'px'; ov.style.top = sp.y + 'px';
+    ov.style.width = '2px'; ov.style.height = '2px';
+    mbDrawingTextBox = true; return;
+  }
+  if(mbTool === 'pen' || mbTool === 'eraser') {
+    const col = mbTool === 'eraser' ? '#ERASER' : mbColor;
+    const sz = mbTool === 'eraser' ? mbSize*4 : mbSize;
+    mbCurrentStroke = { tool: mbTool, color:col, size:sz, style:mbStyle, points:[wp] };
+  } else if(mbTool === 'line') {
+    mbCurrentStroke = { tool:'line', color:mbColor, size:mbSize, style:mbStyle, x1:wp.x, y1:wp.y, x2:wp.x, y2:wp.y };
+  }
+}
+
+function mbOnMove(e) {
+  e.preventDefault();
+  if(mbIsPanning) {
+    const sp = mbSP(e);
+    mbPanX = mbPanStartPan.x + (sp.x - mbPanStart.x);
+    mbPanY = mbPanStartPan.y + (sp.y - mbPanStart.y);
+    mbRedraw(); return;
+  }
+  if(mbInstrumentDrag) {
+    const wp = mbWP(e); mbApplyDrag(wp); mbRedraw(); return;
+  }
+  // Hover-cursor over handvatten
+  if(!mbIsDrawing && mbInstrument) {
+    const sp = mbSP(e);
+    const h = mbHitInstrument(sp.x, sp.y);
+    if(h) mbCanvas.style.cursor = 'grab';
+    else {
+      const c = mbTool==='eraser'?'cell':mbTool==='text'?'text':'crosshair';
+      if(mbCanvas.style.cursor !== c) mbCanvas.style.cursor = c;
+    }
+  }
+  if(!mbIsDrawing) return;
+  const sp = mbSP(e), wp = mbWP(e);
+  if(mbSnapDraw && mbCurrentStroke) {
+    const snapped = mbSnap(wp.x, wp.y, mbSnapDraw.mode);
+    mbCurrentStroke.points.push({ x: snapped.x, y: snapped.y });
+    mbRedraw(); return;
+  }
+  if(mbTool === 'text' && mbDrawingTextBox) {
+    const tsw = mbW2S(mbTextStartWorld.x, mbTextStartWorld.y);
+    const ov = document.getElementById('mb-text-overlay');
+    ov.style.left = Math.min(sp.x, tsw.x) + 'px';
+    ov.style.top = Math.min(sp.y, tsw.y) + 'px';
+    ov.style.width = Math.abs(sp.x - tsw.x) + 'px';
+    ov.style.height = Math.abs(sp.y - tsw.y) + 'px';
+    return;
+  }
+  if(mbTool === 'pen' || mbTool === 'eraser') {
+    mbCurrentStroke.points.push(wp); mbRedraw();
+  } else if(mbTool === 'line') {
+    mbCurrentStroke.x2 = wp.x; mbCurrentStroke.y2 = wp.y; mbRedraw();
+  }
+}
+
+function mbOnUp(e) {
+  if(mbIsPanning) { mbIsPanning = false; mbCanvas.style.cursor = mbTool==='eraser'?'cell':mbTool==='text'?'text':'crosshair'; return; }
+  if(mbInstrumentDrag) { mbInstrumentDrag = null; return; }
+  if(!mbIsDrawing) return;
+  mbIsDrawing = false;
+  if(mbSnapDraw && mbCurrentStroke) {
+    if(mbCurrentStroke.points.length >= 2) { mbStrokes.push(mbCurrentStroke); saveMyBoardToStorage(); }
+    mbSnapDraw = null; mbCurrentStroke = null; mbRedraw(); return;
+  }
+  if(mbTool === 'text' && mbDrawingTextBox) {
+    const sp = mbSP(e);
+    const tsw = mbW2S(mbTextStartWorld.x, mbTextStartWorld.y);
+    const bw = Math.max(Math.abs(sp.x - tsw.x), 60);
+    const bh = Math.max(Math.abs(sp.y - tsw.y), 30);
+    const ov = document.getElementById('mb-text-overlay');
+    ov.style.left = Math.min(sp.x, tsw.x) + 'px';
+    ov.style.top = Math.min(sp.y, tsw.y) + 'px';
+    ov.style.width = bw + 'px'; ov.style.height = bh + 'px';
+    const ta = document.getElementById('mb-textarea');
+    ta.style.fontSize = (mbSize*4) + 'px';
+    ta.style.color = mbColor; ta.value = '';
+    ov.classList.add('visible'); mbDrawingTextBox = false;
+    setTimeout(() => ta.focus(), 50); return;
+  }
+  if(mbCurrentStroke) {
+    mbStrokes.push(mbCurrentStroke);
+    mbCurrentStroke = null;
+    saveMyBoardToStorage();
+  }
+}
+
+function mbCommitText() {
+  const ov = document.getElementById('mb-text-overlay');
+  if(!ov.classList.contains('visible')) return;
+  const text = document.getElementById('mb-textarea').value.trim();
+  if(text) {
+    const bx = parseInt(ov.style.left), by = parseInt(ov.style.top);
+    const wp = mbS2W(bx, by);
+    mbStrokes.push({
+      tool:'text', text, x:wp.x, y:wp.y,
+      w: parseInt(ov.style.width)/mbZoom, h: parseInt(ov.style.height)/mbZoom,
+      color: mbColor, size: mbSize*4, style: 'solid'
+    });
+    saveMyBoardToStorage();
+    mbRedraw();
+  }
+  ov.classList.remove('visible');
+  document.getElementById('mb-textarea').value = '';
+}
+
+function mbOnWheel(e) {
+  e.preventDefault();
+  const sp = mbSP(e);
+  const factor = e.deltaY < 0 ? 1.1 : 0.9;
+  const nz = Math.max(0.1, Math.min(5, mbZoom * factor));
+  mbPanX = sp.x - (sp.x - mbPanX) * (nz / mbZoom);
+  mbPanY = sp.y - (sp.y - mbPanY) * (nz / mbZoom);
+  mbZoom = nz;
+  document.getElementById('mb-zoom-ind').textContent = Math.round(mbZoom*100) + '%';
+  mbRedraw();
+}
+function mbOnTouchStart(e) {
+  if(e.touches.length === 2) {
+    mbLastTouchDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+    mbLastTouchMid = { x:(e.touches[0].clientX + e.touches[1].clientX)/2, y:(e.touches[0].clientY + e.touches[1].clientY)/2 };
+    mbIsPanning = false; mbIsDrawing = false;
+  }
+}
+function mbOnTouchMove(e) {
+  if(e.touches.length === 2) {
+    e.preventDefault();
+    const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+    const mid = { x:(e.touches[0].clientX + e.touches[1].clientX)/2, y:(e.touches[0].clientY + e.touches[1].clientY)/2 };
+    if(mbLastTouchDist) {
+      const factor = dist / mbLastTouchDist;
+      const nz = Math.max(0.1, Math.min(5, mbZoom * factor));
+      mbPanX = mid.x - (mid.x - mbPanX) * (nz / mbZoom) + (mid.x - mbLastTouchMid.x);
+      mbPanY = mid.y - (mid.y - mbPanY) * (nz / mbZoom) + (mid.y - mbLastTouchMid.y);
+      mbZoom = nz;
+      document.getElementById('mb-zoom-ind').textContent = Math.round(mbZoom*100) + '%';
+      mbRedraw();
+    }
+    mbLastTouchDist = dist; mbLastTouchMid = mid;
+  }
+}
+function mbOnTouchEnd(e) { mbLastTouchDist = null; mbLastTouchMid = null; }
+
+function mbUndo() {
+  if(!mbStrokes.length) return;
+  mbStrokes.pop();
+  saveMyBoardToStorage();
+  mbRedraw();
+}
+
+function mbFitAll() {
+  if(!mbStrokes.length) { mbPanX = 0; mbPanY = 0; mbZoom = 1; document.getElementById('mb-zoom-ind').textContent = '100%'; mbRedraw(); return; }
+  const bb = mbBBox(mbStrokes);
+  if(!bb) return;
+  const pad = 60;
+  const sx = (mbCanvas.width - pad*2) / ((bb.maxX - bb.minX) || 1);
+  const sy = (mbCanvas.height - pad*2) / ((bb.maxY - bb.minY) || 1);
+  mbZoom = Math.max(0.1, Math.min(5, Math.min(sx, sy)));
+  mbPanX = mbCanvas.width/2 - ((bb.minX + bb.maxX)/2) * mbZoom;
+  mbPanY = mbCanvas.height/2 - ((bb.minY + bb.maxY)/2) * mbZoom;
+  document.getElementById('mb-zoom-ind').textContent = Math.round(mbZoom*100) + '%';
+  mbRedraw();
+}
+function mbBBox(strokes) {
+  let mnX=Infinity,mnY=Infinity,mxX=-Infinity,mxY=-Infinity;
+  for(const s of strokes) {
+    const pts = s.tool === 'pen' || s.tool === 'eraser' ? (s.points||[]) :
+                s.tool === 'text' ? [{x:s.x,y:s.y},{x:s.x+(s.w||100),y:s.y+(s.h||30)}] :
+                [{x:s.x1,y:s.y1},{x:s.x2,y:s.y2}];
+    for(const p of pts) { if(p.x<mnX)mnX=p.x; if(p.y<mnY)mnY=p.y; if(p.x>mxX)mxX=p.x; if(p.y>mxY)mxY=p.y; }
+  }
+  return mnX === Infinity ? null : { minX:mnX, minY:mnY, maxX:mxX, maxY:mxY };
+}
+
+function mbRedraw() {
+  if(!mbCtx) return;
+  mbCtx.clearRect(0, 0, mbCanvas.width, mbCanvas.height);
+  mbCtx.fillStyle = '#111116';
+  mbCtx.fillRect(0, 0, mbCanvas.width, mbCanvas.height);
+  mbCtx.save();
+  mbCtx.translate(mbPanX, mbPanY); mbCtx.scale(mbZoom, mbZoom);
+  mbStrokes.forEach(s => drawStroke(s, mbCtx));
+  if(mbCurrentStroke) drawStroke(mbCurrentStroke, mbCtx);
+  mbDrawInstrument(mbCtx);
+  mbCtx.restore();
+}
+
+// ── Deel met klas ──
+async function shareMyBoard() {
+  if(!mbStrokes.length) {
+    alert('Je bordje is leeg. Teken eerst iets om te delen.');
+    return;
+  }
+  const status = document.getElementById('mb-share-status');
+  const btn = document.getElementById('mb-share-btn');
+  status.textContent = 'delen…';
+  status.classList.remove('success');
+  try {
+    const sharedAt = Date.now();
+    // Stuur snapshot — strip locked-flag voor het geval die er ooit in komt
+    const snapshot = mbStrokes.map(s => { const c = {...s}; delete c.locked; return c; });
+    await update(controlRef, { assignment: { strokes: snapshot, sharedAt } });
+    myBoardSharedAt = sharedAt;
+    saveMyBoardToStorage();
+    updateMyBoardButton();
+    status.textContent = '✓ gedeeld met ' + Object.keys(leerlingen||{}).length + ' leerling(en)';
+    status.classList.add('success');
+    btn.classList.add('just-shared');
+    btn.textContent = '✓ Gedeeld';
+    setTimeout(() => {
+      btn.classList.remove('just-shared');
+      btn.textContent = '📤 Opnieuw delen';
+    }, 1500);
+  } catch(e) {
+    status.textContent = 'fout: ' + e.message;
+    status.classList.remove('success');
+  }
+}
+
+// ════════════════════════════════════════
+// END SESSIE
+// ════════════════════════════════════════
+document.getElementById('end-btn').addEventListener('click',async()=>{
+  if(!confirm('Sessie beëindigen? Alle bordjes worden gewist.'))return;
+  off(ref(db,`sessies/${sessieCode}/leerlingen`));
+  off(controlRef);
+  await remove(ref(db,`sessies/${sessieCode}`));
+  // Localstorage van mijn bordje opruimen voor deze sessie
+  try { localStorage.removeItem(mbStorageKey()); } catch(e) {}
+  location.reload();
+});
+
+function escapeHTML(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+</script>
+</body>
+</html>
