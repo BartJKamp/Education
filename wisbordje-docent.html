@@ -395,6 +395,7 @@
     cursor:pointer; transition:all .12s; white-space:nowrap;
   }
   .mb-action-btn:hover { color:var(--fg); border-color:var(--fg-dim); }
+  #mb-grid-btn.active { background:var(--accent); border-color:var(--accent); color:#fff; }
   .mb-action-btn.danger:hover {
     background:#3d1f1f; color:var(--red); border-color:var(--red);
   }
@@ -611,6 +612,7 @@
       <button class="mb-size-btn" data-size="12">L</button>
       <div class="mb-sep"></div>
       <button class="mb-action-btn" id="mb-undo-btn" title="Ctrl+Z">↩ Undo</button>
+      <button class="mb-action-btn" id="mb-grid-btn" title="Raster aan/uit">▦ Raster</button>
       <button class="mb-action-btn" id="mb-fit-btn">⊡ Passend</button>
       <button class="mb-action-btn danger" id="mb-clear-btn">Wis</button>
       <span class="zoom-ind" id="mb-zoom-ind">100%</span>
@@ -882,14 +884,61 @@ function renderMini(strokes,feedback,canvas,data){
   const w=canvas.offsetWidth||240,h=canvas.offsetHeight||135;
   if(canvas.width!==w)canvas.width=w;if(canvas.height!==h)canvas.height=h;
   const ctx=canvas.getContext('2d');ctx.fillStyle='#111116';ctx.fillRect(0,0,w,h);
-  const all=[...strokes,...feedback];if(!all.length)return;
+  const all=[...strokes,...feedback];
+  // Als er geen strokes zijn maar er moet wel een grid getekend worden,
+  // tekenen we het grid in een neutrale schaal (1.0) zonder fit.
+  if(!all.length){
+    if(data?.showGrid) drawMiniGrid(ctx, 0, 0, 1, w, h);
+    return;
+  }
   const bb=mergeBBox(data?.bbox||computeBBox(strokes),computeBBox(feedback));if(!bb)return;
   const pad=14,bbW=(bb.maxX-bb.minX)||200,bbH=(bb.maxY-bb.minY)||150;
   const scale=Math.min((w-pad*2)/bbW,(h-pad*2)/bbH);
   const offX=w/2-((bb.minX+bb.maxX)/2)*scale,offY=h/2-((bb.minY+bb.maxY)/2)*scale;
   ctx.save();ctx.translate(offX,offY);ctx.scale(scale,scale);
+  // Grid tekenen vóór de strokes, alleen als de leerling het aan heeft.
+  // Belangrijk: hetzelfde document-space grid als bij de leerling, dus de
+  // tekening 'staat op' het raster zoals zij het zien.
+  if(data?.showGrid) drawMiniGrid(ctx, offX, offY, scale, w, h);
   strokes.forEach(s=>drawStroke(s,ctx));feedback.forEach(s=>drawStroke(s,ctx));
   ctx.restore();
+}
+
+/*
+  Mini-grid: dezelfde cell=40 als bij de leerling, maar omdat een mini-tegel
+  vaak op ~5-15% schaal staat zou een ruwe kopie van drawGrid bijna onzichtbare
+  lijntjes geven. We compenseren met iets meer alpha. Verder identiek principe:
+  bereken zichtbaar wereldvenster, teken alleen lijnen daarin.
+
+  Aanroep gebeurt NA de ctx.translate/scale van renderMini, dus we werken
+  in dezelfde document-space als de strokes.
+*/
+function drawMiniGrid(c, offX, offY, scale, w, h) {
+  const cell = 40;
+  // Het zichtbare wereldvenster: keer-rekenen vanuit scherm-coordinaten
+  const x0 = -offX / scale;
+  const y0 = -offY / scale;
+  const x1 = (w - offX) / scale;
+  const y1 = (h - offY) / scale;
+  const sx = Math.floor(x0 / cell) * cell;
+  const sy = Math.floor(y0 / cell) * cell;
+  c.save();
+  c.lineWidth = 1 / scale;
+  c.strokeStyle = 'rgba(255,255,255,0.12)';
+  c.beginPath();
+  for (let x = sx; x <= x1; x += cell) { c.moveTo(x, y0); c.lineTo(x, y1); }
+  for (let y = sy; y <= y1; y += cell) { c.moveTo(x0, y); c.lineTo(x1, y); }
+  c.stroke();
+  c.lineWidth = 1.2 / scale;
+  c.strokeStyle = 'rgba(255,255,255,0.22)';
+  c.beginPath();
+  const major = cell * 5;
+  const mx = Math.floor(x0 / major) * major;
+  const my = Math.floor(y0 / major) * major;
+  for (let x = mx; x <= x1; x += major) { c.moveTo(x, y0); c.lineTo(x, y1); }
+  for (let y = my; y <= y1; y += major) { c.moveTo(x0, y); c.lineTo(x1, y); }
+  c.stroke();
+  c.restore();
 }
 
 // ════════════════════════════════════════
@@ -941,10 +990,45 @@ function renderFs(){
   if(!Array.isArray(strokes)) strokes = Object.values(strokes);
   const fb=feedbackStrokes[fsNaam]||[];
   ctx.save();ctx.translate(fsPanX,fsPanY);ctx.scale(fsZoom,fsZoom);
+  // Grid tekenen als de leerling het aan heeft staan — zo zie je hun
+  // tekening precies op het raster zoals zij het zelf zien.
+  if(data?.showGrid) drawFsGrid(ctx, canvas.width, canvas.height);
   strokes.forEach(s=>drawStroke(s,ctx));
   fb.forEach(s=>drawStroke(s,ctx));
   if(fsCurrentStroke)drawStroke(fsCurrentStroke,ctx);
   ctx.restore();
+}
+
+/*
+  Fullscreen-grid: identiek aan de leerling-versie (cell=40, alpha 0.06/0.13).
+  Werkt op document-space coordinaten, dus pan/zoom van de fullscreen-view
+  bewegen het raster correct mee.
+*/
+function drawFsGrid(c, cw, ch) {
+  const cell = 40;
+  const x0 = -fsPanX / fsZoom;
+  const y0 = -fsPanY / fsZoom;
+  const x1 = (cw - fsPanX) / fsZoom;
+  const y1 = (ch - fsPanY) / fsZoom;
+  const sx = Math.floor(x0 / cell) * cell;
+  const sy = Math.floor(y0 / cell) * cell;
+  c.save();
+  c.lineWidth = 1 / fsZoom;
+  c.strokeStyle = 'rgba(255,255,255,0.06)';
+  c.beginPath();
+  for (let x = sx; x <= x1; x += cell) { c.moveTo(x, y0); c.lineTo(x, y1); }
+  for (let y = sy; y <= y1; y += cell) { c.moveTo(x0, y); c.lineTo(x1, y); }
+  c.stroke();
+  c.lineWidth = 1.2 / fsZoom;
+  c.strokeStyle = 'rgba(255,255,255,0.13)';
+  c.beginPath();
+  const major = cell * 5;
+  const mx = Math.floor(x0 / major) * major;
+  const my = Math.floor(y0 / major) * major;
+  for (let x = mx; x <= x1; x += major) { c.moveTo(x, y0); c.lineTo(x, y1); }
+  for (let y = my; y <= y1; y += major) { c.moveTo(x0, y); c.lineTo(x1, y); }
+  c.stroke();
+  c.restore();
 }
 
 // FS CANVAS EVENTS
@@ -1248,6 +1332,7 @@ let mbIsDrawing = false;
 let mbCanvas, mbCtx;
 let mbTool = 'pen', mbColor = '#ffffff', mbSize = 3, mbStyle = 'solid';
 let mbPanX = 0, mbPanY = 0, mbZoom = 1;
+let mbShowGrid = false; // raster aan/uit voor mijn-bordje
 let mbIsPanning = false, mbPanStart = {x:0,y:0}, mbPanStartPan = {x:0,y:0};
 let mbLastTouchDist = null, mbLastTouchMid = null;
 
@@ -1321,6 +1406,11 @@ function setupMyBoard() {
     });
   });
   document.getElementById('mb-undo-btn').addEventListener('click', mbUndo);
+  document.getElementById('mb-grid-btn').addEventListener('click', () => {
+    mbShowGrid = !mbShowGrid;
+    document.getElementById('mb-grid-btn').classList.toggle('active', mbShowGrid);
+    mbRedraw();
+  });
   document.getElementById('mb-clear-btn').addEventListener('click', () => {
     if(!mbStrokes.length) return;
     if(!confirm('Jouw bordje volledig wissen?')) return;
@@ -1789,6 +1879,43 @@ function mbBBox(strokes) {
   return mnX === Infinity ? null : { minX:mnX, minY:mnY, maxX:mxX, maxY:mxY };
 }
 
+// ════════════════════════════════════════
+// GRID voor mijn-bordje (vierkant raster)
+// ════════════════════════════════════════
+/*
+  Tekent een vierkant raster in document-coordinaten, identiek aan de
+  versie op de leerling-pagina. Lokaal (niet gesynchroniseerd over Firebase).
+  Cel-grootte 40 wereldeenheden, met een vettere lijn elke 5 cellen voor
+  leesbaarheid — net als ruitjespapier in een wiskunde-schrift.
+*/
+function mbDrawGrid(c, cw, ch) {
+  if (!mbShowGrid) return;
+  const cell = 40;
+  const x0 = -mbPanX / mbZoom;
+  const y0 = -mbPanY / mbZoom;
+  const x1 = (cw - mbPanX) / mbZoom;
+  const y1 = (ch - mbPanY) / mbZoom;
+  const sx = Math.floor(x0 / cell) * cell;
+  const sy = Math.floor(y0 / cell) * cell;
+  c.save();
+  c.lineWidth = 1 / mbZoom;
+  c.strokeStyle = 'rgba(255,255,255,0.06)';
+  c.beginPath();
+  for (let x = sx; x <= x1; x += cell) { c.moveTo(x, y0); c.lineTo(x, y1); }
+  for (let y = sy; y <= y1; y += cell) { c.moveTo(x0, y); c.lineTo(x1, y); }
+  c.stroke();
+  c.lineWidth = 1.2 / mbZoom;
+  c.strokeStyle = 'rgba(255,255,255,0.13)';
+  c.beginPath();
+  const major = cell * 5;
+  const mx = Math.floor(x0 / major) * major;
+  const my = Math.floor(y0 / major) * major;
+  for (let x = mx; x <= x1; x += major) { c.moveTo(x, y0); c.lineTo(x, y1); }
+  for (let y = my; y <= y1; y += major) { c.moveTo(x0, y); c.lineTo(x1, y); }
+  c.stroke();
+  c.restore();
+}
+
 function mbRedraw() {
   if(!mbCtx) return;
   mbCtx.clearRect(0, 0, mbCanvas.width, mbCanvas.height);
@@ -1796,6 +1923,7 @@ function mbRedraw() {
   mbCtx.fillRect(0, 0, mbCanvas.width, mbCanvas.height);
   mbCtx.save();
   mbCtx.translate(mbPanX, mbPanY); mbCtx.scale(mbZoom, mbZoom);
+  mbDrawGrid(mbCtx, mbCanvas.width, mbCanvas.height);
   mbStrokes.forEach(s => drawStroke(s, mbCtx));
   if(mbCurrentStroke) drawStroke(mbCurrentStroke, mbCtx);
   mbDrawInstrument(mbCtx);

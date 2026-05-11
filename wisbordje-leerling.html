@@ -244,6 +244,9 @@
     <button class="size-btn active" data-size="3">S</button>
     <button class="size-btn" data-size="6">M</button>
     <button class="size-btn" data-size="12">L</button>
+    <div class="tool-sep"></div>
+    <!-- Format-sectie: hier komen later meer rasters (polair, isometrisch, ...) -->
+    <button class="tool-btn" id="grid-btn" title="Raster aan/uit">▦</button>
     <div class="toolbar-right">
       <button class="undo-btn" id="undo-btn" title="Ctrl+Z">↩</button>
       <button class="hand-btn" id="hand-btn">✋ Vraag</button>
@@ -324,6 +327,7 @@ const SNAP_HIT_PX = 14;
 
 // Viewport (eigen bordje)
 let panX=0, panY=0, zoom=1;
+let showGrid = false; // raster aan/uit (lokaal, niet gesynchroniseerd)
 const MIN_ZOOM=0.1, MAX_ZOOM=5;
 let isPanning=false, panStart={x:0,y:0}, panStartPan={x:0,y:0};
 let lastTouchDist=null, lastTouchMid=null;
@@ -381,7 +385,7 @@ async function join() {
   if(!snap.exists()){err.textContent='Sessie niet gevonden.';return;}
   sessieCode=code; naam=n;
   leerlingRef=ref(db,`sessies/${code}/leerlingen/${naam}`);
-  await set(leerlingRef,{naam,strokes:[],lastSeen:Date.now(),klaar:false,hand:false});
+  await set(leerlingRef,{naam,strokes:[],lastSeen:Date.now(),klaar:false,hand:false,showGrid:false});
   startBoard();
 }
 
@@ -556,7 +560,7 @@ function handleWipeAll(wipeAt) {
 // SPOTLIGHT (leerling zijde)
 // ════════════════════════════════════════
 // Cache van laatste spotlight-data, zodat we kunnen herrendere zodra het canvas geldig is
-let lastSpotData = { strokes: [], feedback: [] };
+let lastSpotData = { strokes: [], feedback: [], showGrid: false };
 
 function enterSpotlight(targetNaam) {
   const screen = document.getElementById('spotlight-screen');
@@ -565,7 +569,7 @@ function enterSpotlight(targetNaam) {
     off(ref(db,`sessies/${sessieCode}/leerlingen/${spotlightSubscribed}`));
   }
   spotlightSubscribed = targetNaam;
-  lastSpotData = { strokes: [], feedback: [] };
+  lastSpotData = { strokes: [], feedback: [], showGrid: false };
   document.getElementById('spotlight-name').textContent = targetNaam;
   screen.classList.add('visible');
 
@@ -577,7 +581,7 @@ function enterSpotlight(targetNaam) {
     requestAnimationFrame(() => {
       resizeSpotCanvas();
       // Eerste poging tot rendering met evt. eerder gecachte data
-      renderSpotlight(lastSpotData.strokes, lastSpotData.feedback);
+      renderSpotlight(lastSpotData.strokes, lastSpotData.feedback, lastSpotData.showGrid);
     });
   });
 
@@ -589,8 +593,8 @@ function enterSpotlight(targetNaam) {
     if(!Array.isArray(s)) s = Object.values(s);
     let fb = data.feedback || [];
     if(!Array.isArray(fb)) fb = Object.values(fb);
-    lastSpotData = { strokes: s, feedback: fb };
-    renderSpotlight(s, fb);
+    lastSpotData = { strokes: s, feedback: fb, showGrid: !!data.showGrid };
+    renderSpotlight(s, fb, lastSpotData.showGrid);
   });
 }
 
@@ -599,7 +603,7 @@ function exitSpotlight() {
     off(ref(db,`sessies/${sessieCode}/leerlingen/${spotlightSubscribed}`));
     spotlightSubscribed = null;
   }
-  lastSpotData = { strokes: [], feedback: [] };
+  lastSpotData = { strokes: [], feedback: [], showGrid: false };
   document.getElementById('spotlight-screen').classList.remove('visible');
 }
 
@@ -610,24 +614,33 @@ function resizeSpotCanvas() {
   spotCanvas.width = wrap.clientWidth;
   spotCanvas.height = wrap.clientHeight;
   // Direct herrendere met laatst bekende data
-  renderSpotlight(lastSpotData.strokes, lastSpotData.feedback);
+  renderSpotlight(lastSpotData.strokes, lastSpotData.feedback, lastSpotData.showGrid);
 }
 
-function renderSpotlight(s, fb) {
+function renderSpotlight(s, fb, gridOn) {
   if(!spotCtx) return;
   // Als canvas nog geen formaat heeft: probeer te resizen, en plan een re-render
   if(spotCanvas.width === 0 || spotCanvas.height === 0) {
     resizeSpotCanvas();
     if(spotCanvas.width === 0 || spotCanvas.height === 0) {
       // Canvas-wrap nog niet zichtbaar; probeer het volgend frame opnieuw
-      requestAnimationFrame(() => renderSpotlight(lastSpotData.strokes, lastSpotData.feedback));
+      requestAnimationFrame(() => renderSpotlight(lastSpotData.strokes, lastSpotData.feedback, lastSpotData.showGrid));
       return;
     }
   }
   spotCtx.fillStyle = '#111116';
   spotCtx.fillRect(0,0,spotCanvas.width,spotCanvas.height);
   const all = [...s, ...fb];
-  if(!all.length) return;
+  if(!all.length) {
+    // Als er niets getekend is maar de leerling wél grid aan heeft, tonen
+    // we een neutrale rastersweergave zodat de spotlight niet leeg lijkt.
+    if(gridOn) {
+      spotCtx.save();
+      drawSpotGrid(spotCtx, 0, 0, 1, spotCanvas.width, spotCanvas.height);
+      spotCtx.restore();
+    }
+    return;
+  }
   const bb = getBoundingBox(all);
   if(!bb) return;
   const pad = 40;
@@ -639,9 +652,43 @@ function renderSpotlight(s, fb) {
   spotCtx.save();
   spotCtx.translate(offX, offY);
   spotCtx.scale(scale, scale);
+  // Grid eerst tekenen (onder de strokes)
+  if(gridOn) drawSpotGrid(spotCtx, offX, offY, scale, spotCanvas.width, spotCanvas.height);
   s.forEach(st => drawStroke(st, spotCtx));
   fb.forEach(st => drawStroke(st, spotCtx));
   spotCtx.restore();
+}
+
+/*
+  Spotlight-grid: cell=40 in document-space. Aangepast alpha-niveau zodat het
+  raster ook bij sterke uitschaling (denk: hele klas kijkt mee op een beamer)
+  duidelijk genoeg is om de structuur te zien zonder de tekening te overweldigen.
+*/
+function drawSpotGrid(c, offX, offY, scale, w, h) {
+  const cell = 40;
+  const x0 = -offX / scale;
+  const y0 = -offY / scale;
+  const x1 = (w - offX) / scale;
+  const y1 = (h - offY) / scale;
+  const sx = Math.floor(x0 / cell) * cell;
+  const sy = Math.floor(y0 / cell) * cell;
+  c.save();
+  c.lineWidth = 1 / scale;
+  c.strokeStyle = 'rgba(255,255,255,0.10)';
+  c.beginPath();
+  for (let x = sx; x <= x1; x += cell) { c.moveTo(x, y0); c.lineTo(x, y1); }
+  for (let y = sy; y <= y1; y += cell) { c.moveTo(x0, y); c.lineTo(x1, y); }
+  c.stroke();
+  c.lineWidth = 1.2 / scale;
+  c.strokeStyle = 'rgba(255,255,255,0.20)';
+  c.beginPath();
+  const major = cell * 5;
+  const mx = Math.floor(x0 / major) * major;
+  const my = Math.floor(y0 / major) * major;
+  for (let x = mx; x <= x1; x += major) { c.moveTo(x, y0); c.lineTo(x, y1); }
+  for (let y = my; y <= y1; y += major) { c.moveTo(x0, y); c.lineTo(x1, y); }
+  c.stroke();
+  c.restore();
 }
 
 // ════════════════════════════════════════
@@ -699,6 +746,12 @@ function setupTools() {
   document.querySelectorAll('.color-dot').forEach(d=>{d.addEventListener('click',()=>{document.querySelectorAll('.color-dot').forEach(x=>x.classList.remove('active'));d.classList.add('active');currentColor=d.dataset.color;if(currentTool==='eraser')setTool('pen');});});
   document.querySelectorAll('.size-btn').forEach(b=>{b.addEventListener('click',()=>{document.querySelectorAll('.size-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');currentSize=parseInt(b.dataset.size);});});
   document.getElementById('undo-btn').addEventListener('click',undo);
+  document.getElementById('grid-btn').addEventListener('click',()=>{
+    showGrid = !showGrid;
+    document.getElementById('grid-btn').classList.toggle('active', showGrid);
+    redraw();
+    syncStateNow(); // direct naar Firebase, niet wachten op stroke-sync
+  });
   document.getElementById('clear-btn').addEventListener('click',()=>{
     if(isInputBlocked())return;
     // Behoud locked strokes (gedeelde docent-opdracht). Alleen eigen
@@ -1235,6 +1288,62 @@ function getStrokePoints(s){if(s.tool==='pen'||s.tool==='eraser')return s.points
 function resizeCanvas(){const wrap=canvas.parentElement;canvas.width=wrap.clientWidth;canvas.height=wrap.clientHeight;redraw();}
 
 // ════════════════════════════════════════
+// ════════════════════════════════════════
+// GRID (vierkant raster, document-space)
+// ════════════════════════════════════════
+/*
+  Tekent een vierkant raster in document-coordinaten — dus achter de
+  pan/scale-transformatie. Hierdoor:
+    - Beweegt het mee als je pant (geen "wereld die over een raster glijdt")
+    - Schaalt het mee als je inzoomt
+    - Heeft het de juiste oneindige uitstrekking: we berekenen welk deel
+      van wereldcoordinaten zichtbaar is en tekenen alleen lijnen in dat
+      venster (anders zou zoom-out duizenden lijnen tekenen).
+
+  Cel-grootte is 40 wereldeenheden = ongeveer een vierkantje in een wiskunde-
+  schrift bij standaard-zoom. Vetter elke 5 cellen voor leesbaarheid.
+*/
+function drawGrid(c, cw, ch) {
+  if (!showGrid) return;
+  const cell = 40;
+  // Bepaal het zichtbare venster in wereldcoordinaten
+  const x0 = -panX / zoom;
+  const y0 = -panY / zoom;
+  const x1 = (cw - panX) / zoom;
+  const y1 = (ch - panY) / zoom;
+  // Eerste lijn op een veelvoud van cell links/boven van het venster
+  const sx = Math.floor(x0 / cell) * cell;
+  const sy = Math.floor(y0 / cell) * cell;
+  c.save();
+  // Dunne lijnen tussen elke cel
+  c.lineWidth = 1 / zoom; // 1px op scherm ongeacht zoom
+  c.strokeStyle = 'rgba(255,255,255,0.06)';
+  c.beginPath();
+  for (let x = sx; x <= x1; x += cell) {
+    c.moveTo(x, y0); c.lineTo(x, y1);
+  }
+  for (let y = sy; y <= y1; y += cell) {
+    c.moveTo(x0, y); c.lineTo(x1, y);
+  }
+  c.stroke();
+  // Vettere lijn elke 5 cellen (zoals een wiskundeschrift)
+  c.lineWidth = 1.2 / zoom;
+  c.strokeStyle = 'rgba(255,255,255,0.13)';
+  c.beginPath();
+  const major = cell * 5;
+  const mx = Math.floor(x0 / major) * major;
+  const my = Math.floor(y0 / major) * major;
+  for (let x = mx; x <= x1; x += major) {
+    c.moveTo(x, y0); c.lineTo(x, y1);
+  }
+  for (let y = my; y <= y1; y += major) {
+    c.moveTo(x0, y); c.lineTo(x1, y);
+  }
+  c.stroke();
+  c.restore();
+}
+
+// ════════════════════════════════════════
 // RENDER (eigen bordje)
 // ════════════════════════════════════════
 function redraw() {
@@ -1242,6 +1351,7 @@ function redraw() {
   ctx.clearRect(0,0,canvas.width,canvas.height);
   ctx.fillStyle='#111116';ctx.fillRect(0,0,canvas.width,canvas.height);
   ctx.save();ctx.translate(panX,panY);ctx.scale(zoom,zoom);
+  drawGrid(ctx, canvas.width, canvas.height);
   strokes.forEach(s=>drawStroke(s,ctx));
   feedback.forEach(s=>drawStroke(s,ctx));
   // Live de currentStroke meetekenen — dit is essentieel: zonder dit veegt
@@ -1282,6 +1392,7 @@ function syncSoon() {
       lastSeen: Date.now(),
       klaar: isKlaar,
       hand: handRaised,
+      showGrid: showGrid,
       strokes: strokes.slice(-300),
       bbox: bb || null
     });
@@ -1290,7 +1401,7 @@ function syncSoon() {
 
 function syncStateNow() {
   if(!leerlingRef)return;
-  update(leerlingRef, { naam, lastSeen: Date.now(), klaar: isKlaar, hand: handRaised });
+  update(leerlingRef, { naam, lastSeen: Date.now(), klaar: isKlaar, hand: handRaised, showGrid: showGrid });
 }
 
 function escapeHTML(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
